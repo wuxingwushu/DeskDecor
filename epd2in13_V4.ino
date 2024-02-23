@@ -80,12 +80,12 @@ void setup()
   //free(BlackImage);
   Debug("初始化\n");
 
-  Paint_Clear(WHITE);
+  /*Paint_Clear(WHITE);
   QR();
   for(int i = 0; i < 6; ++i){
     EPD_2in13_V4_Display_Partial(BlackImage);
     DEV_Delay_ms(100);
-  }
+  }*/
 
   ADC_Init();
   DEV_Delay_ms(100);
@@ -171,7 +171,9 @@ void loop()
     CN_Show(40, 0, InfoD.hitokoto);
     CN_Show(0, 100, InfoD.from);
 
-    int Dian = ReadADC() * EPD_2in13_V4_HEIGHT;
+    int Dian = ReadADC();
+    //Num_Show(170, 100, Dian);
+    Dian = ((float)Dian / 170) * EPD_2in13_V4_HEIGHT;
     if(Dian > EPD_2in13_V4_HEIGHT){
       Dian = EPD_2in13_V4_HEIGHT;
     }
@@ -181,6 +183,8 @@ void loop()
     for(int i = 0; i < Dian; ++i){
       Paint_SetPixel(i, 121, BLACK);
     }
+    
+
 
     for(int i = 0; i < 6; ++i){
       EPD_2in13_V4_Display_Partial(BlackImage);
