@@ -24,12 +24,15 @@ float ReadADC(){
   adc_reading /= NO_OF_SAMPLES;
   uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
 
+  //voltage 最小1220
+  //voltage 最大1390
+
   Debug("\nADC Reading: ");
   Debug(adc_reading);
   Debug("\tVoltage: ");
   Debug(voltage);
   Debug("\t");
-  Debug((float)voltage / 4095);
+  Debug(voltage - 1220);
 
-  return (float)voltage / 4095;
+  return voltage - 1220;
 }
