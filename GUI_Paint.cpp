@@ -720,3 +720,41 @@ void Num_Show(UWORD Xpoint, UWORD Ypoint, int32_t Nummber)
     //show
     CN_Show(Xpoint, Ypoint, (const char*)pStr);
 }
+
+
+
+#include "qrcodegen.h"
+#include "EPD_2in13_V4.h"
+
+uint8_t qrcode[qrcodegen_BUFFER_LEN_MAX];
+uint8_t tempBuffer[qrcodegen_BUFFER_LEN_MAX];
+
+//二维码 适当放大
+void Paint_SetBlock(UWORD Xpoint, UWORD Ypoint, UWORD BlockSize, UWORD Color, UWORD Xp){
+  Xpoint *= BlockSize;
+  Ypoint *= BlockSize;
+  for(int x = Xpoint; x <= (Xpoint + BlockSize); ++x){
+    for(int y = Ypoint; y <= (Ypoint + BlockSize); ++y){
+      Paint_SetPixel(x + Xp, y, Color);
+    }
+  }
+}
+
+void QR(const char *text){
+	enum qrcodegen_Ecc errCorLvl = qrcodegen_Ecc_LOW;
+	
+	bool ok = qrcodegen_encodeText(text, tempBuffer, qrcode, errCorLvl,
+		qrcodegen_VERSION_MIN, qrcodegen_VERSION_MAX, qrcodegen_Mask_AUTO, true);
+	if (!ok)
+    return;
+    
+  int size = qrcodegen_getSize(qrcode);
+  int BlockSize = EPD_2in13_V4_WIDTH / size;
+  int bianchuang = 0;
+  int XPos = (EPD_2in13_V4_HEIGHT - (size * BlockSize)) / 2;
+  for(int x = -bianchuang; x < size + bianchuang; ++x){
+    for(int y = -bianchuang; y < size + bianchuang; ++y){
+      Paint_SetBlock(x + bianchuang, y + bianchuang, BlockSize, qrcodegen_getModule(qrcode, x, y) ? BLACK : WHITE, XPos);
+    }
+  }
+}

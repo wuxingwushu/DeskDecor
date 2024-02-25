@@ -214,6 +214,9 @@ void CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename);
 void CN_Show(UWORD Xstart, UWORD Ystart, const char* filename);
 void Num_Show(UWORD Xpoint, UWORD Ypoint, int32_t Nummber);
 
+//二维码显示内容
+void QR(const char *text);
+
 #endif
 
 
