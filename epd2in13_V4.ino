@@ -48,22 +48,22 @@ void setup()
 {
   //初始化 模块或设备
 	DEV_Module_Init();
-  DEV_Delay_ms(10);
+  DEV_Delay_ms(100);
   //初始化 文件管理系统 （需要字体文件）
   if(!SPIFFS.begin(true)){
     Debug("An Error has occurred while mounting SPIFFS");
     return;
   }
-  DEV_Delay_ms(10);
+  DEV_Delay_ms(100);
   //初始化 屏幕
 	EPD_2in13_V4_Init();
-  DEV_Delay_ms(10);
+  DEV_Delay_ms(100);
   //初始化 ADC电压检测
   ADC_Init();
-  DEV_Delay_ms(10);
+  DEV_Delay_ms(100);
   //初始化 12引脚口
   pinMode(12, INPUT_PULLUP);
-  DEV_Delay_ms(10);
+  DEV_Delay_ms(100);
 
   //初始化屏幕内容
   UWORD Imagesize = ((EPD_2in13_V4_WIDTH % 8 == 0)? (EPD_2in13_V4_WIDTH / 8 ): (EPD_2in13_V4_WIDTH / 8 + 1)) * EPD_2in13_V4_HEIGHT;
@@ -80,7 +80,7 @@ void setup()
   //获取电压，显示电压
   int Dian = ReadADC();
   Num_Show(170, 100, Dian);
-  Dian = ((float)Dian / 170) * EPD_2in13_V4_HEIGHT;
+  Dian = ((float)Dian / VoltageRange) * EPD_2in13_V4_HEIGHT;
   if(Dian > EPD_2in13_V4_HEIGHT){
     Dian = EPD_2in13_V4_HEIGHT;
   }
@@ -100,7 +100,7 @@ void setup()
       DEV_Delay_ms(100);
     }
     // 设置GPIO唤醒
-    esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, LOW);//12脚低电平唤醒
+    //esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, LOW);//12脚低电平唤醒
     // 设置唤醒时间为两分钟
     esp_sleep_enable_timer_wakeup(2 * 60 * 1000000);
     // 进入深度睡眠状态
@@ -108,19 +108,28 @@ void setup()
   }
 
   //获取 一言内容 和 显示
+  int HitokotoCiShu = 0;
   HitokotoInfo InfoD;
   InfoD.Success = false;
   while(!InfoD.Success){
+    ++HitokotoCiShu;
     InfoD = GetHitokoto();
     if(!InfoD.Success){
       DEV_Delay_ms(100);
       Debug("Error: GetHitokoto()\n");
+      if(HitokotoCiShu > 10){
+        break;
+      }
     }else{
       Debug("Hitokoto OK!\n");
       CN_Show(40, 0, InfoD.hitokoto);
       //CN_Show(0, 100, InfoD.from);
     }
   }
+  // 断开WiFi连接
+  WiFi.disconnect(true);
+  // 关闭WiFi模块
+  WiFi.mode(WIFI_OFF);
 
   
   //刷新屏幕显示内容
@@ -129,7 +138,7 @@ void setup()
     DEV_Delay_ms(100);
   }
   // 设置GPIO唤醒
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, LOW);//12脚低电平唤醒
+  //esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, LOW);//12脚低电平唤醒
   // 设置唤醒时间为两分钟
   esp_sleep_enable_timer_wakeup(2 * 60 * 1000000);
   // 进入深度睡眠状态
