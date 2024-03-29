@@ -721,6 +721,23 @@ void Num_Show(UWORD Xpoint, UWORD Ypoint, int32_t Nummber)
     CN_Show(Xpoint, Ypoint, (const char*)pStr);
 }
 
+void Img_Show(UWORD Xstart, UWORD Ystart, const unsigned char* img){
+  unsigned char S = 7;
+  unsigned char Z;
+  for(int x = 0; x < Xstart; ++x){
+    for(int y = 0; y < Ystart; ++y){
+      ++S;
+      if(S == 8){
+        Z = *img;
+        ++img;
+        S = 0;
+      }
+      Paint_SetPixel(y, x, (Z & 0x80) ? WHITE : BLACK);
+      Z = Z << 1;
+    }
+  }
+}
+
 
 
 #include "qrcodegen.h"

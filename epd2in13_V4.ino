@@ -7,6 +7,8 @@
 #include "Hitokoto.h"
 #include "ADC.h"
 #include <SPIFFS.h>
+#include <EEPROM.h>
+#include "ImageData.h"
 
 
 //const char* ssid = "道生";
@@ -79,7 +81,7 @@ void setup()
 
   //获取电压，显示电压
   int Dian = ReadADC();
-  Num_Show(170, 100, Dian);
+  //Num_Show(170, 100, Dian);
   Dian = ((float)Dian / VoltageRange) * EPD_2in13_V4_HEIGHT;
   if(Dian > EPD_2in13_V4_HEIGHT){
     Dian = EPD_2in13_V4_HEIGHT;
@@ -94,6 +96,19 @@ void setup()
 
   //是否可以连接WIFI
   if(!ConnectWIFI()){
+    // 初始化 EEPROM
+    EEPROM.begin(4);
+    // 从 EEPROM 中读取数据
+    int value;
+    EEPROM.get(0, value);
+    ++value;
+    if(value >= 8){
+      value = 0;
+    }
+    Img_Show(EPD_2in13_V4_WIDTH, EPD_2in13_V4_HEIGHT, ImgD[value]);
+    EEPROM.put(0, value);
+    EEPROM.commit();
+
     //刷新屏幕 只显示电量
     for(int i = 0; i < 6; ++i){
       EPD_2in13_V4_Display_Partial(BlackImage);
@@ -123,7 +138,7 @@ void setup()
     }else{
       Debug("Hitokoto OK!\n");
       CN_Show(40, 0, InfoD.hitokoto);
-      //CN_Show(0, 100, InfoD.from);
+      CN_Show(0, 100, InfoD.from);
     }
   }
   // 断开WiFi连接

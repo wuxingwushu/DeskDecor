@@ -213,6 +213,7 @@ void Paint_DrawImage(const unsigned char *image_buffer, UWORD xStart, UWORD ySta
 void CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename);
 void CN_Show(UWORD Xstart, UWORD Ystart, const char* filename);
 void Num_Show(UWORD Xpoint, UWORD Ypoint, int32_t Nummber);
+void Img_Show(UWORD Xstart, UWORD Ystart, const unsigned char* img);
 
 //二维码显示内容
 void QR(const char *text);
