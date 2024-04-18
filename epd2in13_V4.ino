@@ -11,10 +11,10 @@
 #include "ImageData.h"
 
 
-//const char* ssid = "道生";
-//const char* password = "369784512";
-const char* ssid = "USER_028892";
-const char* password = "09577678";
+const char* ssid = "道生";
+const char* password = "369784512";
+//const char* ssid = "USER_028892";
+//const char* password = "09577678";
 
 UBYTE *BlackImage;
 
@@ -89,9 +89,7 @@ void setup()
   Debug("\t");
   Debug(Dian);
   Debug("\n");
-  for(int i = 0; i < Dian; ++i){
-    Paint_SetPixel(i, 121, BLACK);
-  }
+  
   
 
   //是否可以连接WIFI
@@ -109,6 +107,10 @@ void setup()
     EEPROM.put(0, value);
     EEPROM.commit();
 
+    for(int i = 0; i < Dian; ++i){
+      Paint_SetPixel(i, 121, BLACK);
+    }
+
     //刷新屏幕 只显示电量
     for(int i = 0; i < 6; ++i){
       EPD_2in13_V4_Display_Partial(BlackImage);
@@ -120,6 +122,10 @@ void setup()
     esp_sleep_enable_timer_wakeup(2 * 60 * 1000000);
     // 进入深度睡眠状态
     esp_deep_sleep_start();
+  }else{
+    for(int i = 0; i < Dian; ++i){
+      Paint_SetPixel(i, 121, BLACK);
+    }
   }
 
   //获取 一言内容 和 显示
