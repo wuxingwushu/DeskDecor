@@ -5,7 +5,7 @@
 图片ImageData.h文件生成使用的是[TestRoutineSet - Dithering](https://github.com/wuxingwushu/TestRoutineSet/tree/main/Dithering)的Freetype测试程序
 
 ## 每隔2分钟更新显示内容
-![示例图片1](./imgle/1.jpg)
+![示例图片1](./image/1.jpg)
 ## 没有WIFI时显示储存的图片
-![示例图片2](./imgle/2.jpg)
+![示例图片2](./image/2.jpg)
 
