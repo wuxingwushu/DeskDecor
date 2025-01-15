@@ -210,7 +210,7 @@ void Paint_DrawBitMap(const unsigned char* image_buffer);
 void Paint_DrawImage(const unsigned char *image_buffer, UWORD xStart, UWORD yStart, UWORD W_Image, UWORD H_Image); 
 
 //外加
-void CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename);
+unsigned int CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename);
 void CN_Show(UWORD Xstart, UWORD Ystart, const char* filename);
 void Num_Show(UWORD Xpoint, UWORD Ypoint, int32_t Nummber);
 void Img_Show(UWORD Xstart, UWORD Ystart, const unsigned char* img);

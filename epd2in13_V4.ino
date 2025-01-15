@@ -9,12 +9,14 @@
 #include <SPIFFS.h>
 #include <EEPROM.h>
 #include "ImageData.h"
+//#include "WebDAV.h"
 
+const char* ssid = "KT-2.4G";const char* password = "aurex123456";
+//const char* ssid = "CMCC-U55E";const char* password = "eku7dx5f";
+//const char* ssid = "道生";const char* password = "369784512";
+//const char* ssid = "USER_128978";const char* password = "70438480";
 
-const char* ssid = "道生";
-const char* password = "369784512";
-//const char* ssid = "USER_028892";
-//const char* password = "09577678";
+#define DelayMinute       5
 
 UBYTE *BlackImage;
 
@@ -28,14 +30,14 @@ bool ConnectWIFI(){
   Debug("\n");
   while (WiFi.status() != WL_CONNECTED) {
     ++cishu;
-    if(cishu > 10){//十次后没法连接判定为没有网络
+    if(cishu > 100){//几次后没法连接判定为没有网络
       // 断开WiFi连接
       WiFi.disconnect(true);
       // 关闭WiFi模块
       WiFi.mode(WIFI_OFF);
       return false;
     }
-    delay(1000);
+    DEV_Delay_ms(100);
     Debug(".");
   }
 
@@ -119,7 +121,7 @@ void setup()
     // 设置GPIO唤醒
     //esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, LOW);//12脚低电平唤醒
     // 设置唤醒时间为两分钟
-    esp_sleep_enable_timer_wakeup(2 * 60 * 1000000);
+    esp_sleep_enable_timer_wakeup(DelayMinute * 60 * 1000000);
     // 进入深度睡眠状态
     esp_deep_sleep_start();
   }else{
@@ -127,6 +129,8 @@ void setup()
       Paint_SetPixel(i, 121, BLACK);
     }
   }
+
+  //WebDav_Upload("FontInfo.bin");
 
   //获取 一言内容 和 显示
   int HitokotoCiShu = 0;
@@ -161,7 +165,7 @@ void setup()
   // 设置GPIO唤醒
   //esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, LOW);//12脚低电平唤醒
   // 设置唤醒时间为两分钟
-  esp_sleep_enable_timer_wakeup(2 * 60 * 1000000);
+  esp_sleep_enable_timer_wakeup(DelayMinute * 60 * 1000000);
   // 进入深度睡眠状态
   esp_deep_sleep_start();
 }

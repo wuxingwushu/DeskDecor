@@ -29,6 +29,14 @@
 ******************************************************************************/
 #include "DEV_Config.h"
 
+
+// 延迟函数，使用轻度睡眠
+void light_delay(uint32_t delay_ms) {
+  esp_sleep_enable_timer_wakeup(delay_ms * 1000);  // 设置定时器唤醒（单位：微秒）
+  esp_light_sleep_start();                  // 进入轻度睡眠模式
+}
+
+
 void GPIO_Config(void)
 {
     pinMode(EPD_BUSY_PIN,  INPUT);

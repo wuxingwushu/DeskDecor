@@ -605,9 +605,9 @@ void Paint_DrawImage(const unsigned char *image_buffer, UWORD xStart, UWORD ySta
 }
 
 
-void CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename){
+unsigned int CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename){
   if(filename == 0xFFFF){
-    return;
+    return 0;
   }
   //Serial.println(filename);
   UWORD x = Xstart, y = Ystart;
@@ -622,7 +622,7 @@ void CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename){
   File fileInfo = SPIFFS.open("/FontInfo.bin");
   if(!fileInfo){
     Serial.println("Failed to open file for writing\n");
-    return;
+    return 0;
   }
   fileInfo.seek(sizeof(FontInformation) * filename);
   for(int i = 0; i < sizeof(FontInformation); ++i){
@@ -635,7 +635,7 @@ void CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename){
   File file = SPIFFS.open("/FontData.bin");
   if(!file){
     Serial.println("Failed to open file for writing\n");
-    return;
+    return 0;
   }
   file.seek(myFont.Deviation);
   unsigned int Size = ((myFont.x * myFont.y) / 8) + (((myFont.x * myFont.y) % 8) != 0 ? 1 : 0);
@@ -660,6 +660,7 @@ void CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename){
     }
   }
   file.close();
+  return myFont.x;
 }
 
 
@@ -668,14 +669,15 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char* filename){
   unsigned short zi;
 
   int PosX = Xstart, PosY = Ystart;
+  unsigned int XXXd;
   unsigned char CIshu = 0;
   while (*p_text != 0) {
     zi = from_bytes(p_text);
     //Serial.println("***********************");
     //Serial.println(zi);
     p_text += fromDeviation;
-    CN_UTF8_Show(PosY,PosX,zi);
-    PosX += 20;
+    XXXd = CN_UTF8_Show(PosY,PosX,zi);
+    PosX += (XXXd + 4);
     if(PosX > 230){
       PosY += 24;
       PosX = 0;

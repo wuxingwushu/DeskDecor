@@ -61,8 +61,10 @@
 #define DEV_Digital_Read(_pin) digitalRead(_pin)
 
 /**
- * delay x ms
+ * light_delay x ms
 **/
+void light_delay(uint32_t delay_ms);
+//#define DEV_Delay_ms(__xms) light_delay(__xms)
 #define DEV_Delay_ms(__xms) delay(__xms)
 
 /*------------------------------------------------------------------------------------------------------*/
