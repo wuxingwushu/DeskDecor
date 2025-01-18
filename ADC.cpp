@@ -33,5 +33,5 @@ float ReadADC(){
   Debug("\t");
   Debug(voltage - MinVoltage);
 
-  return voltage - MinVoltage;
+  return float(voltage - MinVoltage) / VoltageRange;
 }

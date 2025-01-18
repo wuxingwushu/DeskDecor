@@ -10,7 +10,6 @@ HitokotoInfo GetHitokoto(){
   DEV_Delay_ms(100);
   int httpCode = http.GET();
   HitokotoInfo HInfo;
-  HInfo.Success = false;
   if (httpCode == HTTP_CODE_OK) {
     String payload = http.getString();
     Debug("\n");

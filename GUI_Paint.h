@@ -80,19 +80,19 @@
 
 #include "Debug.h"
 #include "DEV_Config.h"
-
+#include <SPIFFS.h>
 
 /**
  * Image attributes
 **/
 typedef struct {
-    UBYTE *Image;
-    UWORD Width;
-    UWORD Height;
-    UWORD WidthMemory;
-    UWORD HeightMemory;
-    UWORD Color;
-    UWORD Rotate;
+    UBYTE *Image;// 屏幕画布
+    UWORD Width;// 宽 250
+    UWORD Height;// 高 122
+    UWORD WidthMemory;// 宽内存（字节）
+    UWORD HeightMemory;// 高内存（行）
+    UWORD Color;// 颜色主
+    UWORD Rotate;// 角度
     UWORD Mirror;
     UWORD WidthByte;
     UWORD HeightByte;
@@ -210,10 +210,17 @@ void Paint_DrawBitMap(const unsigned char* image_buffer);
 void Paint_DrawImage(const unsigned char *image_buffer, UWORD xStart, UWORD yStart, UWORD W_Image, UWORD H_Image); 
 
 //外加
+#if From_Bin
+extern File WordInfoFile;// 字体信息文件
+#endif
+extern File WordImgFile;// 字体位图文件
+void Paint_SetPixel_Gai(UWORD Xpoint, UWORD Ypoint, UWORD Color);
 unsigned int CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename);
 void CN_Show(UWORD Xstart, UWORD Ystart, const char* filename);
 void Num_Show(UWORD Xpoint, UWORD Ypoint, int32_t Nummber);
 void Img_Show(UWORD Xstart, UWORD Ystart, const unsigned char* img);
+// 刷新屏幕
+void RenovateScreen(UBYTE *Image);
 
 //二维码显示内容
 void QR(const char *text);

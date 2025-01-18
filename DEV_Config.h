@@ -44,11 +44,11 @@
 /**
  * GPIO config
 **/
-#define EPD_SCK_PIN  13
-#define EPD_MOSI_PIN 14
-#define EPD_CS_PIN   15
+#define EPD_SCK_PIN  13// 时序
+#define EPD_MOSI_PIN 14// 数据
+#define EPD_CS_PIN   15//  使能芯片
 #define EPD_RST_PIN  26
-#define EPD_DC_PIN   27
+#define EPD_DC_PIN   27//  数据/指令
 #define EPD_BUSY_PIN 25
 
 #define GPIO_PIN_SET   1

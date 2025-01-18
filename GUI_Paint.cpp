@@ -82,7 +82,6 @@
 #include <stdlib.h>
 #include <string.h> //memset()
 #include <math.h>
-#include <SPIFFS.h>
 #include "FontFunction.h"
 PAINT Paint;
 
@@ -330,6 +329,25 @@ void Paint_SetPixel(UWORD Xpoint, UWORD Ypoint, UWORD Color)
             break;
         }
     }
+}
+
+void Paint_SetPixel_Gai(UWORD Xpoint, UWORD Ypoint, UWORD Color)
+{
+    if (Xpoint > Paint.Width || Ypoint > Paint.Height)
+    {
+        Debug("Exceeding display boundaries\r\n");
+        return;
+    }
+    UWORD X, Y;
+    X = Paint.WidthMemory - Ypoint - 1;
+    Y = Xpoint;
+    UDOUBLE Addr = X / 8 + Y * Paint.WidthByte;
+    X = (0x80 >> (X % 8));
+    UBYTE Rdata = Paint.Image[Addr];
+    if (Color == BLACK)
+        Paint.Image[Addr] = Rdata & ~X;
+    else
+        Paint.Image[Addr] = Rdata | X;
 }
 
 /******************************************************************************
@@ -666,118 +684,136 @@ void Paint_DrawImage(const unsigned char *image_buffer, UWORD xStart, UWORD ySta
     }
 }
 
+File WordInfoFile; // 字体信息文件
+File WordImgFile;  // 字体位图文件
 unsigned int CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename)
 {
+    // 字体不存在
     if (filename == 0xFFFF)
     {
         return 0;
     }
-    // Serial.println(filename);
     UWORD x = Xstart, y = Ystart;
-    unsigned int Z_Size = 0;
+    unsigned int PixPosX = 0, PixPosY = 0; // 记录读取第几位
+    unsigned char Font8bit;                // 八个像素信息（8bit）
 
+    FontInformation myFont; // 字体信息
 #if From_Bin
-    FontInformation myFont = FontInfo[filename];
+    myFont = FontInfo[filename]; // 获取字体信息
 #else
-    FontInformation myFont;
-    char *P = (char *)&myFont;
-    File fileInfo = SPIFFS.open("/FontInfo.bin");
-    if (!fileInfo)
-    {
-        Serial.println("Failed to open file for writing\n");
-        return 0;
-    }
-    fileInfo.seek(sizeof(FontInformation) * filename);
+    WordInfoFile.seek(0);                             // 回到文件开头
+    WordInfoFile.seek(sizeof(FontInformation) * filename); // 偏移到字体信息位置
     for (int i = 0; i < sizeof(FontInformation); ++i)
     {
-        *P = fileInfo.read();
-        ++P;
+        ((char *)&myFont)[i] = WordInfoFile.read(); // 逐一字节读取数据
     }
-    fileInfo.close();
 #endif
 
-    File file = SPIFFS.open("/FontData.bin");
-    if (!file)
-    {
-        Serial.println("Failed to open file for writing\n");
-        return 0;
-    }
-    file.seek(myFont.Deviation);
+    WordImgFile.seek(0);               // 回到文件开头
+    WordImgFile.seek(myFont.Deviation); // 偏移到位图数据开头
+    // 计算位图大小（字节）
     unsigned int Size = ((myFont.x * myFont.y) / 8) + (((myFont.x * myFont.y) % 8) != 0 ? 1 : 0);
-    // Serial.println(Size);
+    // 将内容逐一渲染到屏幕上
     for (int i = 0; i < Size; ++i)
     {
-        unsigned char Z = file.read();
-        // Serial.println(Z);
+        Font8bit = WordImgFile.read();
         for (int ij = 0; ij < 8; ++ij)
         {
-            if (Z & 0x80)
+            if (Font8bit & 0x80)
             {
-                Paint_SetPixel(y, x + myFont.Dy, BLACK);
+                Paint_SetPixel_Gai(y, x + myFont.Dy, BLACK);
             }
             else
             {
-                Paint_SetPixel(y, x + myFont.Dy, WHITE);
+                Paint_SetPixel_Gai(y, x + myFont.Dy, WHITE);
             }
-            Z = Z << 1;
-            ++Z_Size;
+            Font8bit <<= 1;
+            ++PixPosY;
             ++y;
-            if (Z_Size >= myFont.x)
+            // 到边缘换行
+            if (PixPosY >= myFont.x)
             {
-                Z_Size = 0;
+                ++PixPosX;
+                // 到边缘 说明显示完毕了
+                if (PixPosX >= myFont.y)
+                {
+                    return myFont.x;
+                }
+                PixPosY = 0;
                 ++x;
                 y = Ystart;
             }
         }
     }
-    file.close();
-    return myFont.x + myFont.Dx;
+    return myFont.x;
 }
 
 void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename)
 {
-    const char *p_text = filename;
-    unsigned short zi;
+    const char *p_text = filename; // 字符串指针
+    unsigned short FontIndex;      // 字体索引
 
     int PosX = Xstart, PosY = Ystart;
-    unsigned int XXXd;
-    unsigned char CIshu = 0;
+    unsigned int Deflection;   // 字体偏移
+    unsigned char LineNum = 0; // 当前几行文字了（从零开始）
+
+#if From_Bin
+    WordInfoFile = SPIFFS.open("/FontInfo.bin");
+    if (!WordInfoFile)
+    {
+        Serial.println("Failed to open FontInfo for writing\n");
+        return;
+    }
+#endif
+    WordImgFile = SPIFFS.open("/FontData.bin");
+    if (!WordImgFile)
+    {
+        Serial.println("Failed to open FontData for writing\n");
+        return;
+    }
     while (*p_text != 0)
     {
-        zi = from_bytes(p_text);
-        // Serial.println("***********************");
-        // Serial.println(zi);
-        p_text += fromDeviation;
-        XXXd = CN_UTF8_Show(PosY, PosX, zi);
-        if (XXXd == 0)
+        FontIndex = from_bytes(p_text); // 计算下一个字的索引值
+        p_text += fromDeviation;        // 移动到下一个字开头
+        // 显示字,获取字体宽度（用于偏移下一个字的位置）
+        Deflection = CN_UTF8_Show(PosY, PosX, FontIndex);
+        // 不同情况位移距离
+        if (Deflection == 0)
         {
-            XXXd = 10;//空格
+            Deflection = 10; // 空格
         }
-        else if (XXXd <= 5)
+        else if (Deflection <= 5)
         {
-            XXXd += 4;// 符号加距离（但是部分英文会出问题，后面专门重写实现）
+            Deflection += 4; // 符号加距离（但是部分英文会出问题，后面专门重写实现）
         }
-        PosX += (XXXd + 2);
+        PosX += (Deflection + 2);
+        // 到屏幕边缘了，换行
         if (PosX > 230)
         {
             PosY += 24;
             PosX = 0;
-            ++CIshu;
-            if (CIshu == 4)
+            ++LineNum;
+            // 已经显示完整个屏幕了
+            if (LineNum >= 4)
             {
                 return;
             }
+            // 不足显示字体的高度
             if (PosY > 110)
             {
                 return;
             }
         }
     }
+    // 关闭文件
+#if From_Bin
+    WordInfoFile.close();
+#endif
+    WordImgFile.close();
 }
 
 void Num_Show(UWORD Xpoint, UWORD Ypoint, int32_t Nummber)
 {
-
     int16_t Num_Bit = 0, Str_Bit = 0;
     uint8_t Str_Array[20] = {0}, Num_Array[20] = {0};
     uint8_t *pStr = Str_Array;
@@ -823,7 +859,7 @@ void Img_Show(UWORD Xstart, UWORD Ystart, const unsigned char *img)
                 ++img;
                 S = 0;
             }
-            Paint_SetPixel(y, x, (Z & 0x80) ? WHITE : BLACK);
+            Paint_SetPixel_Gai(y, x, (Z & 0x80) ? WHITE : BLACK);
             Z = Z << 1;
         }
     }
@@ -844,7 +880,7 @@ void Paint_SetBlock(UWORD Xpoint, UWORD Ypoint, UWORD BlockSize, UWORD Color, UW
     {
         for (int y = Ypoint; y <= (Ypoint + BlockSize); ++y)
         {
-            Paint_SetPixel(x + Xp, y, Color);
+            Paint_SetPixel_Gai(x + Xp, y, Color);
         }
     }
 }
@@ -869,4 +905,91 @@ void QR(const char *text)
             Paint_SetBlock(x + bianchuang, y + bianchuang, BlockSize, qrcodegen_getModule(qrcode, x, y) ? BLACK : WHITE, XPos);
         }
     }
+}
+
+
+void RenovateScreen(UBYTE *Image){
+    UWORD Width, Height;
+    Width = (EPD_2in13_V4_WIDTH % 8 == 0)? (EPD_2in13_V4_WIDTH / 8 ): (EPD_2in13_V4_WIDTH / 8 + 1);
+    Height = EPD_2in13_V4_HEIGHT;
+	
+	//Reset
+    DEV_Digital_Write(EPD_RST_PIN, 0);
+    DEV_Delay_ms(1);
+    DEV_Digital_Write(EPD_RST_PIN, 1);
+
+    DEV_Digital_Write(EPD_CS_PIN, 0);// 使能芯片
+    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
+	DEV_SPI_WriteByte(0x3C); //BorderWavefrom
+    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式
+	DEV_SPI_WriteByte(0x80);	
+
+    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
+	DEV_SPI_WriteByte(0x01); //Driver output control
+    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
+	DEV_SPI_WriteByte(0xF9);
+	DEV_SPI_WriteByte(0x00);
+	DEV_SPI_WriteByte(0x00);
+	
+    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
+	DEV_SPI_WriteByte(0x11); //data entry mode
+    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
+	DEV_SPI_WriteByte(0x03);
+
+
+
+
+    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
+	DEV_SPI_WriteByte(0x44); // SET_RAM_X_ADDRESS_START_END_POSITION
+    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
+	DEV_SPI_WriteByte(0);
+	DEV_SPI_WriteByte(((EPD_2in13_V4_WIDTH-1)>>3) & 0xFF);
+
+    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
+	DEV_SPI_WriteByte(0x45); // SET_RAM_Y_ADDRESS_START_END_POSITION
+    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
+	DEV_SPI_WriteByte(0);
+    DEV_SPI_WriteByte(0);
+    DEV_SPI_WriteByte((EPD_2in13_V4_HEIGHT-1) & 0xFF);
+    DEV_SPI_WriteByte(((EPD_2in13_V4_HEIGHT-1) >> 8) & 0xFF);
+
+
+    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
+	DEV_SPI_WriteByte(0x4E); // SET_RAM_X_ADDRESS_COUNTER
+    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
+	DEV_SPI_WriteByte(0);
+
+    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
+	DEV_SPI_WriteByte(0x4F); // SET_RAM_Y_ADDRESS_COUNTER
+    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
+	DEV_SPI_WriteByte(0);
+    DEV_SPI_WriteByte(0);
+
+    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
+	DEV_SPI_WriteByte(0x24);   //Write Black and White image to RAM
+    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
+    for (UWORD j = 0; j < Height; ++j) {
+        for (UWORD i = 0; i < Width; ++i) {
+			DEV_SPI_WriteByte(Image[i + j * Width]);
+		}
+	}
+
+    for (size_t i = 0; i < 1; ++i)
+    {
+      DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
+	    DEV_SPI_WriteByte(0x22);// Display Update Control
+      DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式
+      DEV_SPI_WriteByte(0xff);// fast:0x0c, quality:0x0f, 0xcf
+      DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
+	    DEV_SPI_WriteByte(0x20);// Activate Display Update Sequence
+
+      while(1)
+	    {	 //=1 BUSY
+		    if(DEV_Digital_Read(EPD_BUSY_PIN)==0) 
+			    break;
+		    DEV_Delay_ms(10);
+	    }
+      DEV_Delay_ms(100);
+    }
+    DEV_Digital_Write(EPD_CS_PIN, 1);// 关闭芯片
 }
