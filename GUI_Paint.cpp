@@ -701,7 +701,7 @@ unsigned int CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename)
 #if From_Bin
     myFont = FontInfo[filename]; // 获取字体信息
 #else
-    WordInfoFile.seek(0);                             // 回到文件开头
+    WordInfoFile.seek(0);                                  // 回到文件开头
     WordInfoFile.seek(sizeof(FontInformation) * filename); // 偏移到字体信息位置
     for (int i = 0; i < sizeof(FontInformation); ++i)
     {
@@ -709,7 +709,7 @@ unsigned int CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename)
     }
 #endif
 
-    WordImgFile.seek(0);               // 回到文件开头
+    WordImgFile.seek(0);                // 回到文件开头
     WordImgFile.seek(myFont.Deviation); // 偏移到位图数据开头
     // 计算位图大小（字节）
     unsigned int Size = ((myFont.x * myFont.y) / 8) + (((myFont.x * myFont.y) % 8) != 0 ? 1 : 0);
@@ -907,89 +907,87 @@ void QR(const char *text)
     }
 }
 
-
-void RenovateScreen(UBYTE *Image){
+void RenovateScreen(UBYTE *Image)
+{
     UWORD Width, Height;
-    Width = (EPD_2in13_V4_WIDTH % 8 == 0)? (EPD_2in13_V4_WIDTH / 8 ): (EPD_2in13_V4_WIDTH / 8 + 1);
+    Width = (EPD_2in13_V4_WIDTH % 8 == 0) ? (EPD_2in13_V4_WIDTH / 8) : (EPD_2in13_V4_WIDTH / 8 + 1);
     Height = EPD_2in13_V4_HEIGHT;
-	
-	//Reset
+
+    // Reset
     DEV_Digital_Write(EPD_RST_PIN, 0);
     DEV_Delay_ms(1);
     DEV_Digital_Write(EPD_RST_PIN, 1);
 
-    DEV_Digital_Write(EPD_CS_PIN, 0);// 使能芯片
-    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
-	DEV_SPI_WriteByte(0x3C); //BorderWavefrom
-    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式
-	DEV_SPI_WriteByte(0x80);	
+    DEV_Digital_Write(EPD_CS_PIN, 0); // 使能芯片
+    DEV_Digital_Write(EPD_DC_PIN, 0); // 指令模式
+    DEV_SPI_WriteByte(0x3C);          // BorderWavefrom
+    DEV_Digital_Write(EPD_DC_PIN, 1); // 数据模式
+    DEV_SPI_WriteByte(0x80);
 
-    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
-	DEV_SPI_WriteByte(0x01); //Driver output control
-    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
-	DEV_SPI_WriteByte(0xF9);
-	DEV_SPI_WriteByte(0x00);
-	DEV_SPI_WriteByte(0x00);
-	
-    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
-	DEV_SPI_WriteByte(0x11); //data entry mode
-    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
-	DEV_SPI_WriteByte(0x03);
+    DEV_Digital_Write(EPD_DC_PIN, 0); // 指令模式
+    DEV_SPI_WriteByte(0x01);          // Driver output control
+    DEV_Digital_Write(EPD_DC_PIN, 1); // 数据模式
+    DEV_SPI_WriteByte(0xF9);
+    DEV_SPI_WriteByte(0x00);
+    DEV_SPI_WriteByte(0x00);
 
+    DEV_Digital_Write(EPD_DC_PIN, 0); // 指令模式
+    DEV_SPI_WriteByte(0x11);          // data entry mode
+    DEV_Digital_Write(EPD_DC_PIN, 1); // 数据模式
+    DEV_SPI_WriteByte(0x03);
 
-
-
-    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
-	DEV_SPI_WriteByte(0x44); // SET_RAM_X_ADDRESS_START_END_POSITION
-    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
-	DEV_SPI_WriteByte(0);
-	DEV_SPI_WriteByte(((EPD_2in13_V4_WIDTH-1)>>3) & 0xFF);
-
-    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
-	DEV_SPI_WriteByte(0x45); // SET_RAM_Y_ADDRESS_START_END_POSITION
-    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
-	DEV_SPI_WriteByte(0);
+    DEV_Digital_Write(EPD_DC_PIN, 0); // 指令模式
+    DEV_SPI_WriteByte(0x44);          // SET_RAM_X_ADDRESS_START_END_POSITION
+    DEV_Digital_Write(EPD_DC_PIN, 1); // 数据模式
     DEV_SPI_WriteByte(0);
-    DEV_SPI_WriteByte((EPD_2in13_V4_HEIGHT-1) & 0xFF);
-    DEV_SPI_WriteByte(((EPD_2in13_V4_HEIGHT-1) >> 8) & 0xFF);
+    DEV_SPI_WriteByte(((EPD_2in13_V4_WIDTH - 1) >> 3) & 0xFF);
 
+    DEV_Digital_Write(EPD_DC_PIN, 0); // 指令模式
+    DEV_SPI_WriteByte(0x45);          // SET_RAM_Y_ADDRESS_START_END_POSITION
+    DEV_Digital_Write(EPD_DC_PIN, 1); // 数据模式
+    DEV_SPI_WriteByte(0);
+    DEV_SPI_WriteByte(0);
+    DEV_SPI_WriteByte((EPD_2in13_V4_HEIGHT - 1) & 0xFF);
+    DEV_SPI_WriteByte(((EPD_2in13_V4_HEIGHT - 1) >> 8) & 0xFF);
 
-    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
-	DEV_SPI_WriteByte(0x4E); // SET_RAM_X_ADDRESS_COUNTER
-    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
-	DEV_SPI_WriteByte(0);
-
-    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
-	DEV_SPI_WriteByte(0x4F); // SET_RAM_Y_ADDRESS_COUNTER
-    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
-	DEV_SPI_WriteByte(0);
+    DEV_Digital_Write(EPD_DC_PIN, 0); // 指令模式
+    DEV_SPI_WriteByte(0x4E);          // SET_RAM_X_ADDRESS_COUNTER
+    DEV_Digital_Write(EPD_DC_PIN, 1); // 数据模式
     DEV_SPI_WriteByte(0);
 
-    DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
-	DEV_SPI_WriteByte(0x24);   //Write Black and White image to RAM
-    DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式 
-    for (UWORD j = 0; j < Height; ++j) {
-        for (UWORD i = 0; i < Width; ++i) {
-			DEV_SPI_WriteByte(Image[i + j * Width]);
-		}
-	}
+    DEV_Digital_Write(EPD_DC_PIN, 0); // 指令模式
+    DEV_SPI_WriteByte(0x4F);          // SET_RAM_Y_ADDRESS_COUNTER
+    DEV_Digital_Write(EPD_DC_PIN, 1); // 数据模式
+    DEV_SPI_WriteByte(0);
+    DEV_SPI_WriteByte(0);
+
+    DEV_Digital_Write(EPD_DC_PIN, 0); // 指令模式
+    DEV_SPI_WriteByte(0x24);          // Write Black and White image to RAM
+    DEV_Digital_Write(EPD_DC_PIN, 1); // 数据模式
+    for (UWORD j = 0; j < Height; ++j)
+    {
+        for (UWORD i = 0; i < Width; ++i)
+        {
+            DEV_SPI_WriteByte(Image[i + j * Width]);
+        }
+    }
 
     for (size_t i = 0; i < 1; ++i)
     {
-      DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
-	    DEV_SPI_WriteByte(0x22);// Display Update Control
-      DEV_Digital_Write(EPD_DC_PIN, 1);// 数据模式
-      DEV_SPI_WriteByte(0xff);// fast:0x0c, quality:0x0f, 0xcf
-      DEV_Digital_Write(EPD_DC_PIN, 0);// 指令模式
-	    DEV_SPI_WriteByte(0x20);// Activate Display Update Sequence
+        DEV_Digital_Write(EPD_DC_PIN, 0); // 指令模式
+        DEV_SPI_WriteByte(0x22);          // Display Update Control
+        DEV_Digital_Write(EPD_DC_PIN, 1); // 数据模式
+        DEV_SPI_WriteByte(0xff);          // fast:0x0c, quality:0x0f, 0xcf
+        DEV_Digital_Write(EPD_DC_PIN, 0); // 指令模式
+        DEV_SPI_WriteByte(0x20);          // Activate Display Update Sequence
 
-      while(1)
-	    {	 //=1 BUSY
-		    if(DEV_Digital_Read(EPD_BUSY_PIN)==0) 
-			    break;
-		    DEV_Delay_ms(10);
-	    }
-      DEV_Delay_ms(100);
+        while (1)
+        { //=1 BUSY
+            if (DEV_Digital_Read(EPD_BUSY_PIN) == 0)
+                break;
+            DEV_Delay_ms(10);
+        }
+        DEV_Delay_ms(100);
     }
-    DEV_Digital_Write(EPD_CS_PIN, 1);// 关闭芯片
+    DEV_Digital_Write(EPD_CS_PIN, 1); // 关闭芯片
 }
