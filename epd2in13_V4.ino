@@ -10,14 +10,15 @@
 #include "ImageData.h"
 #include "Network.h"
 #include <EEPROM.h>
+#include "EepromString.h"
 // #include "WebDAV.h"
 
 #define DelayMinute 5
-NetworkCase CaseInfo;
 
-WebServer server(80);
 
 UBYTE *BlackImage;
+
+NetworkCase CaseInfo;
 
 /* Entry point ----------------------------------------------------------------*/
 void setup()
@@ -49,14 +50,8 @@ void setup()
   DEV_Delay_ms(100);
   if (CaseInfo == Network_Wed)
   {
-    WedServerFun();
-    // 定义根路径的回调函数
-    server.on("/", handleRoot);
-    server.on("/config", HTTP_POST, handleConfig); // 提交Wi-Fi信息进行连接
-
-    // 启动Web服务器
-    server.begin();
-    QR("192.168.4.1");
+    String IPstr = WebServerFun();
+    QR(IPstr.c_str());
     Debug("Network_Wed\n");
   }
   else if (CaseInfo == Network_Ok) // 是否可以连接WIFI
@@ -128,15 +123,19 @@ void setup()
   }
   // 设置GPIO唤醒
   // esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, LOW);//12脚低电平唤醒
-  // 设置唤醒时间为两分钟
-  esp_sleep_enable_timer_wakeup(DelayMinute * 60 * 1000000);
-  // 进入深度睡眠状态
-  esp_deep_sleep_start();
+  if (CaseInfo != Network_Wed){
+    // 设置唤醒时间为两分钟
+    esp_sleep_enable_timer_wakeup(DelayMinute * 60 * 1000000);
+    // 进入深度睡眠状态
+    esp_deep_sleep_start();
+  }
 }
 
 void loop()
 {
-  Debug("*");
-  // 处理来自客户端的HTTP请求
-  server.handleClient();
+  if (CaseInfo == Network_Wed){
+    // 处理来自客户端的HTTP请求
+    server.handleClient();
+  }
+  
 }
