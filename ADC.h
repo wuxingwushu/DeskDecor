@@ -1,3 +1,6 @@
+#ifndef __ADC_H
+#define __ADC_H
+
 #include <esp_adc_cal.h>
 #include <driver/adc.h>
 
@@ -16,3 +19,5 @@ void ADC_Init();
 
 // 读取电压百分比
 float ReadADC();
+
+#endif

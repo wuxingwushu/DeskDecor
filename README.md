@@ -4,6 +4,10 @@
 
 使用ESP32控制墨水屏，每隔两分钟调用一言API获取每日一句，并显示在屏幕上。充满电可以运行6天时间
 
+## 设置
+
+重启设备 5秒內(无法连接WiFi的情況) 按下12pin可以进入设置模式，连接热点 “一言墨水屏”，再扫码进入Wed服务端进行设置。
+
 ## 硬件
 [epd2in13_V4](https://www.waveshare.net/wiki/2.13inch_e-Paper_Cloud_Module#.E5.8E.9F.E7.90.86.E5.9B.BE)
 - 主控芯片：ESP32

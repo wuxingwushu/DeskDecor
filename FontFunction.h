@@ -1,3 +1,5 @@
+#ifndef __FontFunction_H
+#define __FontFunction_H
 
 typedef struct FontInformation {
     unsigned int Deviation;
@@ -29300,4 +29302,6 @@ const FontInformation FontInfo[] = {
 	{ 840182, 6, 6, 1, 9 },//￮, 65518, 1 - 9
 	{ 840187, 6, 14, 1, 2 },//￯, 65519, 1 - 2
 };
+#endif
+
 #endif

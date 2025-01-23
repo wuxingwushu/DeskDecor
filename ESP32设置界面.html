@@ -2,8 +2,70 @@
 <html>
 <head>
   <title>ESP32 设置界面</title>
+  <style>
+    body{
+      height: 100vh;
+      margin: 0;
+      font-family: 'SF Mono', 'Roboto Mono', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #24292e; /* 暗色背景 */
+      color: #c9d1d9; /* 浅色文字 */
+    }
+
+    .form-input {
+      width: calc(100% - 20px);
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      box-sizing: border-box;
+      background-color: #161b22;
+      color: #c9d1d9;
+      transition: border-color 0.3s ease;
+    }
+
+    .form-input:focus {
+      border-color: #58a6ff;
+    }
+
+    .submit-button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background-color: #2ea043;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .submit-button:hover {
+      background-color: #279f42;
+    }
+
+    .form-container {
+      padding: 20px;
+      background-color: #161b22;
+      border-radius: 6px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+
+  <script>
+    function logFun(){
+      console.log("0k");
+    }
+  </script>
+
 </head>
 <body>
-  <h1>待完善！</h1>
+  <form action="/set/config" method="POST" id="passwordForm" class="form-container">
+    <p>更新時間(分钟):</p>
+    <input type="number" id="TimeVal" name="TimeVal" class="form-input" value="5" oninput="logFun">
+    <button type="submit" class="submit-button">修改</button>
+  </form>
 </body>
 </html>

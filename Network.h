@@ -1,3 +1,6 @@
+#ifndef __Network_H
+#define __Network_H
+
 #include <string.h>
 #include <WebServer.h>
 
@@ -11,23 +14,31 @@ typedef enum
 {
     Network_Not = 1, // 没网络
     Network_Ok = 2,  // 有网络
-    Network_Wed = 3 // 启动Wed服务
+    Network_Wed = 3  // 启动Wed服务
 } NetworkCase;
-
 
 extern WebServer server;
 
+// 连接wifi
 NetworkCase ConnectWIFI();
 
+// 启动WebServer服务
 String WebServerFun();
 
-// 处理WiFi配置提交
-void handleConfig();
 // 根路径请求的处理函数
 void handleRoot();
+
+// 設置WIFI網頁
 void handleWifi();
+// 处理WiFi配置提交
+void handleWifiConfig();
+// 設置界面
 void handleSet();
+// 处理WiFi配置提交
+void handleSetConfig();
+// 重启
+void handleRestart();
 
-extern const char* RootHtml;
+extern const char *RootHtml; // 主页
 
-
+#endif

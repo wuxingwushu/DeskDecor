@@ -748,8 +748,9 @@ unsigned int CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename)
     return myFont.x;
 }
 
-void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename)
+void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename, unsigned int bian)
 {
+    bian -= 16;// 减去一个字的宽度
     const char *p_text = filename; // 字符串指针
     unsigned short FontIndex;      // 字体索引
 
@@ -788,7 +789,7 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename)
         }
         PosX += (Deflection + 2);
         // 到屏幕边缘了，换行
-        if (PosX > 230)
+        if (PosX > bian)
         {
             PosY += 24;
             PosX = 0;
@@ -885,19 +886,24 @@ void Paint_SetBlock(UWORD Xpoint, UWORD Ypoint, UWORD BlockSize, UWORD Color, UW
     }
 }
 
-void QR(const char *text)
+unsigned int QR(const char *text, QR_Pos pos)
 {
     enum qrcodegen_Ecc errCorLvl = qrcodegen_Ecc_LOW;
 
     bool ok = qrcodegen_encodeText(text, tempBuffer, qrcode, errCorLvl,
                                    qrcodegen_VERSION_MIN, qrcodegen_VERSION_MAX, qrcodegen_Mask_AUTO, true);
     if (!ok)
-        return;
+        return 0;
 
     int size = qrcodegen_getSize(qrcode);
     int BlockSize = EPD_2in13_V4_WIDTH / size;
     int bianchuang = 0;
-    int XPos = (EPD_2in13_V4_HEIGHT - (size * BlockSize)) / 2;
+    int XPos = 0;
+    if(pos == PosCentre){
+        XPos = (EPD_2in13_V4_HEIGHT - (size * BlockSize)) / 2;
+    }else if(pos == PosRight){
+        XPos = EPD_2in13_V4_HEIGHT - (size * BlockSize);
+    }
     for (int x = -bianchuang; x < size + bianchuang; ++x)
     {
         for (int y = -bianchuang; y < size + bianchuang; ++y)
@@ -905,6 +911,8 @@ void QR(const char *text)
             Paint_SetBlock(x + bianchuang, y + bianchuang, BlockSize, qrcodegen_getModule(qrcode, x, y) ? BLACK : WHITE, XPos);
         }
     }
+
+    return size * BlockSize;
 }
 
 void RenovateScreen(UBYTE *Image)
@@ -987,7 +995,6 @@ void RenovateScreen(UBYTE *Image)
                 break;
             DEV_Delay_ms(10);
         }
-        DEV_Delay_ms(100);
     }
     DEV_Digital_Write(EPD_CS_PIN, 1); // 关闭芯片
 }

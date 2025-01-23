@@ -1,3 +1,6 @@
+#ifndef __Hitokoto_H
+#define __Hitokoto_H
+
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -13,3 +16,5 @@ typedef struct HitokotoInfo
 
 // 获取一言
 HitokotoInfo GetHitokoto();
+
+#endif
