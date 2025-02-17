@@ -11,11 +11,17 @@
 #include "Network.h"
 #include <EEPROM.h>
 #include "EepromString.h"
+#include "OpenMeteo.h"
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 // #include "WebDAV.h"
 
 UBYTE *BlackImage;
 
 NetworkCase CaseInfo;
+
+WiFiUDP ntpUDP;
+NTPClient TimeNTPClient(ntpUDP, "ntp.aliyun.com", 60*60*8, 60*1000);
 
 void setup()
 {
@@ -45,6 +51,7 @@ void setup()
   }
   DEV_Delay_ms(10);
 
+  OpenMeteoInfo infoM;
   CaseInfo = ConnectWIFI();    // 连接wifi
   if (CaseInfo == Network_Wed) // 开启Wed服务
   {
@@ -80,8 +87,21 @@ void setup()
       }
     }
 
-    // 断开连接
-    WiFi.disconnect(true);
+    // 天气信息
+    infoM = GetOpenMeteo();
+    if(infoM.Success){
+        Debug("\n");
+        String tianqi = GetMeteoToString(infoM.Weather) + "," + infoM.Temperature;
+        Debug(tianqi);
+        Debug("\n");
+        CN_Show(0, 76, tianqi.c_str());
+    }
+
+    // 获取时间
+    TimeNTPClient.begin();
+    TimeNTPClient.update();
+
+    
   }
   else // wifi连接失败
   {
@@ -116,10 +136,25 @@ void setup()
 
   if (CaseInfo != Network_Wed)
   {
-    int DelayTime;
+    unsigned int DelayTime;
     EEPROM.get(SleepValueAddr, DelayTime);
+    if(CaseInfo == Network_Ok){
+      int HTime = TimeNTPClient.getHours();// 获取时
+      int MTime = TimeNTPClient.getMinutes();// 获取分
+      if(HTime >= 17){
+        if(!((HTime == 17) && (MTime < 30))){
+          DelayTime = (24 - HTime + 8) * 60 - MTime;
+        }
+      }else if(HTime < 8){
+        DelayTime = (8 - HTime) * 60 - MTime;
+      }
+
+      // 断开连接
+      WiFi.disconnect(true);
+    }
     Debug("休眠时间：");
     Debug(DelayTime);
+    Debug("\n");
     // 设置唤醒时间
     esp_sleep_enable_timer_wakeup(DelayTime * 60 * 1000000);
     // 进入深度睡眠状态
