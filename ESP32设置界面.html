@@ -65,6 +65,19 @@
   <form action="/set/config" method="POST" id="passwordForm" class="form-container">
     <p>更新時間(分钟):</p>
     <input type="number" id="TimeVal" name="TimeVal" class="form-input" value="5" oninput="logFun">
+
+    <p>开始时间:</p>
+    <input type="time" id="StartTime" name="StartTime" class="form-input" required value="08:00" pattern="[0-2][0-9]:[0-5][0-9]" step="60" placeholder="例如: 08:00">
+
+    <p>结束时间:</p>
+    <input type="time" id="EndTime" name="EndTime" class="form-input" required value="17:30" pattern="[0-2][0-9]:[0-5][0-9]" step="60" placeholder="例如: 17:30">
+
+    <p>纬度:</p>
+    <input type="number" id="Latitude" name="Latitude" class="form-input" value="22.9882" step="0.0001" min="-90" max="90" placeholder="例如: 22.8892">
+
+    <p>经度:</p>
+    <input type="number" id="Longitude" name="Longitude" class="form-input" value="114.3198" step="0.0001" min="-180" max="180" placeholder="例如: 119.8562">
+
     <button type="submit" class="submit-button">修改</button>
   </form>
 </body>

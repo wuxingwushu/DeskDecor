@@ -6,22 +6,6 @@
 #include <ArduinoJson.h>
 #include "Debug.h"
 
-
-
-
-
-/*
-0 晴天
-1~3 多云
-61~65 雨
-71~75 雪
-95~99 雷雨
-45~48 雾
-*/
-
-// const char *OpenMeteoHtml = "https://api.open-meteo.com/v1/forecast?latitude=22.9882&longitude=114.3198&hourly=temperature_2m,weather_code&daily=weather_code&timezone=Asia%2FSingapore&forecast_days=1";
-
-
 // 天气信息
 typedef struct OpenMeteoInfo
 {
@@ -30,10 +14,15 @@ typedef struct OpenMeteoInfo
     unsigned int Weather; // 天气
 };
 
+/**
+ * @brief 获取天气
+ * @return 天气信息 */
 OpenMeteoInfo GetOpenMeteo();
 
+/**
+ * @brief 天气代码转天气描述
+ * @param WeatherCode 天气代码 
+ * @return 天气描述 */
 String GetMeteoToString(unsigned int WeatherCode);
-
-
 
 #endif

@@ -148,10 +148,21 @@ void handleSet()
 <body>
   <form action="/set/config" method="POST" id="passwordForm" class="form-container">
     <p>更新時間(分钟):</p>
-    <input type="number" id="TimeVal" name="TimeVal" class="form-input" value="
-  )rawliteral";
-  const String SethtmlForm2 = R"rawliteral(
-" oninput="logFun">
+    <input type="number" id="TimeVal" name="TimeVal" class="form-input" value=")rawliteral";
+  const String SethtmlForm2 = R"rawliteral(" oninput="logFun">
+
+    <p>开始时间:</p>
+    <input type="time" id="StartTime" name="StartTime" class="form-input" required value="08:00" pattern="[0-2][0-9]:[0-5][0-9]" step="60" placeholder="例如: 08:00">
+
+    <p>结束时间:</p>
+    <input type="time" id="EndTime" name="EndTime" class="form-input" required value="17:30" pattern="[0-2][0-9]:[0-5][0-9]" step="60" placeholder="例如: 17:30">
+
+    <p>纬度:</p>
+    <input type="number" id="Latitude" name="Latitude" class="form-input" value="22.9882" step="0.0001" min="-90" max="90" placeholder="例如: 22.8892">
+
+    <p>经度:</p>
+    <input type="number" id="Longitude" name="Longitude" class="form-input" value="114.3198" step="0.0001" min="-180" max="180" placeholder="例如: 119.8562">
+
     <button type="submit" class="submit-button">修改</button>
   </form>
 </body>
@@ -324,16 +335,37 @@ void handleWifiConfig()
 void handleSetConfig()
 {
   String timeConfig = server.arg("TimeVal");
-
-  Debug(timeConfig.toInt());
-  Debug("\n");
+  Debug(timeConfig.toInt());Debug("\n");
+  String StartTimeConfig = server.arg("StartTime");
+  Debug(StartTimeConfig);Debug("\n");
+  String EndTimeConfig = server.arg("EndTime");
+  Debug(EndTimeConfig);Debug("\n");
+  String LatitudeConfig = server.arg("Latitude");
+  Debug(LatitudeConfig);Debug("\n");
+  String LongitudeConfig = server.arg("Longitude");
+  Debug(LongitudeConfig);Debug("\n");
 
   // 读取字符串
   int shu = timeConfig.toInt();
   EEPROM.put(SleepValueAddr, shu);
-  EEPROM.get(SleepValueAddr, shu);
+  unsigned char HMData = StartTimeConfig.substring(0, 2).toInt();
+  EEPROM.put(StartTimeHAddr, HMData);
+  Debug(((int)HMData));Debug("\n");
+  HMData = StartTimeConfig.substring(3, 5).toInt();
+  EEPROM.put(StartTimeMAddr, HMData);
+  Debug(((int)HMData));Debug("\n");
+  HMData = EndTimeConfig.substring(0, 2).toInt();
+  EEPROM.put(EndTimeHAddr, HMData);
+  Debug(((int)HMData));Debug("\n");
+  HMData = EndTimeConfig.substring(3, 5).toInt();
+  EEPROM.put(EndTimeMAddr, HMData);
+  Debug(((int)HMData));Debug("\n");
+  float LXXitude = LatitudeConfig.toFloat();
+  EEPROM.put(LatitudeAddr, LXXitude);
+  LXXitude = LongitudeConfig.toFloat();
+  EEPROM.put(LongitudeAddr, LXXitude);
   EEPROM.commit();
-  Debug(shu);
+  
   server.send(200, "text/html", RootHtml);
 
   // 调用esp_restart()函数进行重启

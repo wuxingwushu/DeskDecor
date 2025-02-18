@@ -127,6 +127,32 @@ void setup()
   for (int i = 0; i < Power; ++i)
     Paint_SetPixel(i, 121, BLACK);
 
+  unsigned int DelayTime;
+  if (CaseInfo != Network_Wed)
+  {
+    EEPROM.get(SleepValueAddr, DelayTime);
+    if(CaseInfo == Network_Ok){
+      int HTime = TimeNTPClient.getHours();// 获取时
+      int MTime = TimeNTPClient.getMinutes();// 获取分
+      String XMTime = "休眠到 8:00";
+      if(HTime >= 17){
+        if(!((HTime == 17) && (MTime < 30))){
+          DelayTime = (24 - HTime + 8) * 60 - MTime;
+          CN_Show(125, 76, XMTime.c_str());
+        }
+      }else if(HTime < 8){
+        DelayTime = (8 - HTime) * 60 - MTime;
+        CN_Show(125, 76, XMTime.c_str());
+      }
+
+      // 断开连接
+      WiFi.disconnect(true);
+    }
+    Debug("休眠时间：");
+    Debug(DelayTime);
+    Debug("\n");
+  }
+
   // 刷新屏幕显示内容
   for (int i = 0; i < 5; ++i)
   {
@@ -136,25 +162,6 @@ void setup()
 
   if (CaseInfo != Network_Wed)
   {
-    unsigned int DelayTime;
-    EEPROM.get(SleepValueAddr, DelayTime);
-    if(CaseInfo == Network_Ok){
-      int HTime = TimeNTPClient.getHours();// 获取时
-      int MTime = TimeNTPClient.getMinutes();// 获取分
-      if(HTime >= 17){
-        if(!((HTime == 17) && (MTime < 30))){
-          DelayTime = (24 - HTime + 8) * 60 - MTime;
-        }
-      }else if(HTime < 8){
-        DelayTime = (8 - HTime) * 60 - MTime;
-      }
-
-      // 断开连接
-      WiFi.disconnect(true);
-    }
-    Debug("休眠时间：");
-    Debug(DelayTime);
-    Debug("\n");
     // 设置唤醒时间
     esp_sleep_enable_timer_wakeup(DelayTime * 60 * 1000000);
     // 进入深度睡眠状态
