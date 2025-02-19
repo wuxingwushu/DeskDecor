@@ -81,7 +81,7 @@ void handleRoot()
 
 void handleSet()
 {
-  const String SethtmlForm = R"rawliteral(
+  String SethtmlForm = R"rawliteral(
 <!DOCTYPE HTML>
 <html>
 <head>
@@ -170,7 +170,31 @@ void handleSet()
   )rawliteral";
   int shu;
   EEPROM.get(SleepValueAddr, shu);
-  server.send(200, "text/html", SethtmlForm + String(shu) + SethtmlForm2);
+  unsigned char StartHours, StartMinutes, EndHours, EndMinutes;
+  EEPROM.get(StartTimeHoursAddr, StartHours);
+  EEPROM.get(StartTimeMinutesAddr, StartMinutes);
+  EEPROM.get(EndTimeHoursAddr, EndHours);
+  EEPROM.get(EndTimeMinutesAddr, EndMinutes);
+  float LatitudeVal, LongitudeVal;
+  EEPROM.get(LatitudeAddr, LatitudeVal);
+  EEPROM.get(LongitudeAddr, LongitudeVal);
+
+  SethtmlForm += String(shu) + SethtmlForm2;
+
+  String TimeString = "";
+  if(StartHours < 10){TimeString += "0" + String(StartHours);}else{TimeString += String(StartHours);}
+  TimeString += ":";
+  if(StartMinutes < 10){TimeString += "0" + String(StartMinutes);}else{TimeString += String(StartMinutes);}
+  SethtmlForm.replace("08:00", TimeString);
+  TimeString = "";
+  if(EndHours < 10){TimeString += "0" + String(EndHours);}else{TimeString += String(EndHours);}
+  TimeString += ":";
+  if(EndMinutes < 10){TimeString += "0" + String(EndMinutes);}else{TimeString += String(EndMinutes);}
+  SethtmlForm.replace("17:30", TimeString);
+  SethtmlForm.replace("22.9882", String(LatitudeVal));
+  SethtmlForm.replace("114.3198", String(LongitudeVal));
+
+  server.send(200, "text/html", SethtmlForm);
 }
 
 void handleWifi()
@@ -349,16 +373,16 @@ void handleSetConfig()
   int shu = timeConfig.toInt();
   EEPROM.put(SleepValueAddr, shu);
   unsigned char HMData = StartTimeConfig.substring(0, 2).toInt();
-  EEPROM.put(StartTimeHAddr, HMData);
+  EEPROM.put(StartTimeHoursAddr, HMData);
   Debug(((int)HMData));Debug("\n");
   HMData = StartTimeConfig.substring(3, 5).toInt();
-  EEPROM.put(StartTimeMAddr, HMData);
+  EEPROM.put(StartTimeMinutesAddr, HMData);
   Debug(((int)HMData));Debug("\n");
   HMData = EndTimeConfig.substring(0, 2).toInt();
-  EEPROM.put(EndTimeHAddr, HMData);
+  EEPROM.put(EndTimeHoursAddr, HMData);
   Debug(((int)HMData));Debug("\n");
   HMData = EndTimeConfig.substring(3, 5).toInt();
-  EEPROM.put(EndTimeMAddr, HMData);
+  EEPROM.put(EndTimeMinutesAddr, HMData);
   Debug(((int)HMData));Debug("\n");
   float LXXitude = LatitudeConfig.toFloat();
   EEPROM.put(LatitudeAddr, LXXitude);

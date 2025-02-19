@@ -18,7 +18,6 @@ unsigned char ShuPixData[10][2] = {
 };
 
 OpenMeteoInfo GetOpenMeteo(){
-    
     String OpenMeteoHtml1 = "https://api.open-meteo.com/v1/forecast?latitude=";
     String OpenMeteoHtml2 = "&longitude=";
     String OpenMeteoHtml3 = "&current=temperature_2m,weather_code&timezone=Asia%2FSingapore&forecast_days=1";
@@ -55,6 +54,8 @@ OpenMeteoInfo GetOpenMeteo(){
         OInfo.Temperature = temperature;
         OInfo.Success = true;
     }
+    http.end();
+    
     return OInfo;
 }
 
