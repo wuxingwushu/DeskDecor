@@ -7,11 +7,10 @@
 #include "Debug.h"
 
 // 天气信息
-typedef struct OpenMeteoInfo
-{
-    bool Success;         // 是否成功
-    String Temperature;   // 温度
-    unsigned int Weather; // 天气
+typedef struct OpenMeteoInfo {
+  bool Success;          // 是否成功
+  String Temperature;    // 温度
+  unsigned int Weather;  // 天气
 };
 
 /**

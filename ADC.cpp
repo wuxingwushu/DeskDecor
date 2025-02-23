@@ -24,14 +24,7 @@ float ReadADC(){
   adc_reading /= NO_OF_SAMPLES;
   uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
 
-  
-
-  Debug("\nADC Reading: ");
-  Debug(adc_reading);
-  Debug("\tVoltage: ");
-  Debug(voltage);
-  Debug("\t");
-  Debug(voltage - MinVoltage);
+  Debug("\nADC Reading: " + String(adc_reading) + "\tVoltage: " + String(voltage) + "\t" + String(float(voltage - MinVoltage) / VoltageRange));
 
   return float(voltage - MinVoltage) / VoltageRange;
 }

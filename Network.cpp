@@ -11,12 +11,7 @@ NetworkCase ConnectWIFI()
   // 读取字符串
   String ssidConfig = readStringFromEEPROM(WifiNameAddr);
   String passwordConfig = readStringFromEEPROM(WifiPassAddr);
-
-  Debug("链接：");
-  Debug(ssidConfig);
-  Debug(", ");
-  Debug(passwordConfig);
-  Debug("\n");
+  Debug("链接：" + ssidConfig + "," + passwordConfig + "\n");
 
   // 初始化 12引脚口
   pinMode(12, INPUT_PULLUP);
@@ -26,27 +21,24 @@ NetworkCase ConnectWIFI()
   // 连接WiFi
   WiFi.begin(ssidConfig, passwordConfig);
 
-  int cishu = 0;
+  int Count = 0;// 尝试链接次数
   while (WiFi.status() != WL_CONNECTED)
   {
     if (digitalRead(12) == 0)
     {
-      Debug("\n");
-      Debug("Wed服务");
+      Debug("\nWed服务\n");
       return Network_Wed;
     }
-    ++cishu;
-    if (cishu > 50)
+    ++Count;
+    if (Count > 50)
     { // 几次后没法连接判定为没有网络
-      Debug("\n");
-      Debug("连接失败");
+      Debug("\n连接失败\n");
       return Network_Not;
     }
     DEV_Delay_ms(100);
     Debug(".");
   }
-  Debug("\n");
-  Debug("连接成功");
+  Debug("\n连接成功\n");
   return Network_Ok;
 }
 
