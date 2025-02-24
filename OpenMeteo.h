@@ -15,8 +15,9 @@ typedef struct OpenMeteoInfo {
 
 /**
  * @brief 获取天气
+ * @param AttemptCount 尝试获取次数
  * @return 天气信息 */
-OpenMeteoInfo GetOpenMeteo();
+OpenMeteoInfo GetOpenMeteo(unsigned int AttemptCount = 1);
 
 /**
  * @brief 天气代码转天气描述

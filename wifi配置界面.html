@@ -1,18 +1,60 @@
 <!DOCTYPE HTML>
 <html>
+
 <head>
   <title>WiFi 配置界面</title>
   <style>
-    /* 样式 */
-    body, html {
+    /* 新增数字选择框样式 */
+    #numberSelect {
+      margin-top: 15px;
+      display: none;
+    }
+    #numberSelect.show {
+      display: block;
+    }
+
+    .number-select {
+      margin: 15px 0;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .number-option {
+      flex: 1;
+      margin: 0 2px;
+    }
+
+    .number-option input[type="radio"] {
+      display: none;
+    }
+
+    .number-option label {
+      display: block;
+      padding: 8px;
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .number-option input[type="radio"]:checked+label {
+      background: #2ea043;
+      border-color: #279f42;
+    }
+
+    /* 原有样式保持不变 */
+    body,
+    html {
       height: 100vh;
       margin: 0;
       font-family: 'SF Mono', 'Roboto Mono', monospace;
       display: flex;
       justify-content: center;
       align-items: center;
-      background-color: #24292e; /* 暗色背景 */
-      color: #c9d1d9; /* 浅色文字 */
+      background-color: #24292e;
+      color: #c9d1d9;
     }
 
     .wifi-container {
@@ -24,7 +66,7 @@
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
 
-    .wifi-item {      
+    .wifi-item {
       padding: 5vh;
       width: 100%;
       transition: background-color 0.3s ease;
@@ -87,35 +129,84 @@
     }
   </style>
 </head>
+
 <body>
   <div id="liebiao" class="wifi-container">
     <div class="wifi-item" onclick="showPasswordInput(this)">WiFi 123</div>
     <div class="wifi-item" onclick="showPasswordInput(this)">WiFi 456</div>
     <div class="wifi-item" onclick="showPasswordInput(this)">WiFi 789</div>
   </div>
+  
   <form action="/wifi/config" method="POST" id="passwordForm" class="form-container hidden">
     <label for="ssid">WiFi名称:</label>
     <input type="text" id="ssid" placeholder="请输入WiFi名称" name="ssid" class="form-input" required>
     <label for="password">WiFi密码:</label>
     <input type="password" id="password" placeholder="请输入WiFi密码" name="password" class="form-input" required>
-    <button type="submit" class="submit-button">连接</button>
+
+    <!-- 数字选择区域 -->
+    <div id="numberSelect">
+      <div class="number-select">
+        <div class="number-option">
+          <input type="radio" id="num1" name="number" value="1" onchange="handleNumberSelect()">
+          <label for="num1">1</label>
+        </div>
+        <div class="number-option">
+          <input type="radio" id="num2" name="number" value="2" onchange="handleNumberSelect()">
+          <label for="num2">2</label>
+        </div>
+        <div class="number-option">
+          <input type="radio" id="num3" name="number" value="3" onchange="handleNumberSelect()">
+          <label for="num3">3</label>
+        </div>
+        <div class="number-option">
+          <input type="radio" id="num4" name="number" value="4" onchange="handleNumberSelect()">
+          <label for="num4">4</label>
+        </div>
+        <div class="number-option">
+          <input type="radio" id="num5" name="number" value="5" onchange="handleNumberSelect()">
+          <label for="num5">5</label>
+        </div>
+      </div>
+    </div>
+
+    <button type="button" class="submit-button" onclick="handleConnect()">连接</button>
     <button type="button" class="submit-button" onclick="Fh()">返回</button>
   </form>
 </body>
 <script>
   function showPasswordInput(element) {
-    var le = document.getElementById("liebiao");
-    le.classList.add("hidden");
-    var form = document.getElementById("passwordForm");
-    form.classList.remove("hidden"); // 显示
-    form.querySelector("#ssid").value = element.textContent;
+    document.getElementById("liebiao").classList.add("hidden");
+    document.getElementById("passwordForm").classList.remove("hidden");
+    document.getElementById("ssid").value = element.textContent;
   }
 
   function Fh() {
-    var le = document.getElementById("liebiao");
-    le.classList.remove("hidden");
-    var form = document.getElementById("passwordForm");
-    form.classList.add("hidden");
+    document.getElementById("liebiao").classList.remove("hidden");
+    document.getElementById("passwordForm").classList.add("hidden");
+    // 重置表单状态
+    document.getElementById("numberSelect").classList.remove("show");
+    document.querySelectorAll('input[name="number"]').forEach(radio => radio.checked = false);
+  }
+
+  function handleConnect() {
+    const ssid = document.getElementById("ssid").value;
+    const password = document.getElementById("password").value;
+    
+    if (!ssid || !password) {
+      alert("请先填写WiFi名称和密码");
+      return;
+    }
+    
+    // 显示数字选择区域
+    document.getElementById("numberSelect").classList.add("show");
+  }
+
+  function handleNumberSelect() {
+    const selected = document.querySelector('input[name="number"]:checked');
+    if (selected) {
+      // 自动提交表单
+      document.getElementById("passwordForm").submit();
+    }
   }
 </script>
 </html>

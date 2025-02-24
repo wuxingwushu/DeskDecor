@@ -14,7 +14,10 @@ typedef struct HitokotoInfo
   const char* from;// 作者
 };
 
-// 获取一言
-HitokotoInfo GetHitokoto();
+/**
+ * @brief 获取一言
+ * @param AttemptCount 尝试获取次数
+ * @return 一言信息 */
+HitokotoInfo GetHitokoto(unsigned int AttemptCount = 1);
 
 #endif

@@ -31,7 +31,7 @@ void setup() {
   // 初始化屏幕内容
   const UWORD Imagesize = ((EPD_2in13_V4_WIDTH % 8 == 0) ? (EPD_2in13_V4_WIDTH / 8) : (EPD_2in13_V4_WIDTH / 8 + 1)) * EPD_2in13_V4_HEIGHT;
   if ((BlackImage = (UBYTE *)malloc(Imagesize)) == NULL) {
-    Debug("Failed to apply for black memory...\r\n");
+    Debug("Failed to apply for black memory...\n");
     while (1)
       ;
   }
@@ -41,16 +41,13 @@ void setup() {
   ADC_Init();
   // 初始化 文件管理系统 （需要字体文件）
   if (!SPIFFS.begin(true)) {
-    Debug("An Error has occurred while mounting SPIFFS");
+    Debug("An Error has occurred while mounting SPIFFS\n");
     return;
   }
   DEV_Delay_ms(10);
-
-  OpenMeteoInfo infoM;                    // 天气信息
-  PresentTimeInfo InfoPT;                 // 时间信息
-  unsigned int DelayTime;                 // 延迟时间（分）
+  
+  unsigned int DelayTime;       // 延迟时间（分）
   EEPROM.get(SleepValueAddr, DelayTime);  // 獲取一言刷新間隔時間（分）
-  infoM.Success = false;
   CaseInfo = ConnectWIFI();     // 连接wifi
   if (CaseInfo == Network_Wed)  // 开启Wed服务
   {
@@ -64,44 +61,28 @@ void setup() {
   } else if (CaseInfo == Network_Ok)  // wifi连接成功
   {
     // 获取 一言内容 和 显示
-    int InquireCount = 0;
-    HitokotoInfo InfoD;
-    InfoD.Success = false;
-    while (!InfoD.Success) {
-      ++InquireCount;
-      InfoD = GetHitokoto();  // 获取 一言 内容
-      if (!InfoD.Success) {
-        Debug("Error: GetHitokoto()\n");
-        if (InquireCount > 10)
-          break;
-        DEV_Delay_ms(10);
-      } else {
-        Debug("Hitokoto OK!\n");
-        CN_Show(40, 0, InfoD.hitokoto);
-        CN_Show(0, 100, InfoD.from);
-      }
+    HitokotoInfo InfoD = GetHitokoto(10);  // 获取 一言 内容
+    if(InfoD.Success){
+      Debug("Hitokoto OK!\n");
+      CN_Show(40, 0, InfoD.hitokoto);
+      CN_Show(0, 100, InfoD.from);
+    }else{
+      Debug("Error: GetHitokoto()\n");
     }
 
     // 天气信息
-    InquireCount = 0;
-    while (!infoM.Success) {
-      ++InquireCount;
-      infoM = GetOpenMeteo();
-      if (!infoM.Success) {
-        Debug("Error: GetOpenMeteo()\n");
-        if (InquireCount > 10)
-          break;
-        DEV_Delay_ms(10);
-      } else {
-        String WeatherInfo = GetMeteoToString(infoM.Weather) + "," + infoM.Temperature;
-        Debug("\n" + String(WeatherInfo) + "\n");
+    OpenMeteoInfo infoM = GetOpenMeteo();
+    if(infoM.Success){
+      String WeatherInfo = GetMeteoToString(infoM.Weather) + "," + infoM.Temperature;
+        Debug(String(WeatherInfo) + "\n");
         CN_Show(0, 76, WeatherInfo.c_str());
-      }
+    }else{
+      Debug("Error: GetOpenMeteo()\n");
     }
 
     // 获取时间
     RequestPresentTime();
-    InfoPT = GetDelayTime();
+    PresentTimeInfo InfoPT = GetDelayTime();// 时间信息
     if (InfoPT.Success) {
       DelayTime = InfoPT.PresentTime;
       CN_Show(125, 76, InfoPT.PresentStr.c_str());
@@ -127,7 +108,7 @@ void setup() {
   int Power = ReadADC() * EPD_2in13_V4_HEIGHT;
   if (Power > EPD_2in13_V4_HEIGHT)
     Power = EPD_2in13_V4_HEIGHT;
-  Debug("\t" + String(Power) + "\n");
+  Debug("电量长度：" + String(Power) + "\n");
   for (int i = 0; i < Power; ++i)
     Paint_SetPixel(i, 121, BLACK);
 
@@ -138,9 +119,11 @@ void setup() {
   }
 
   if (CaseInfo != Network_Wed) {
-    Debug("休眠时间：" + String(DelayTime) + "\n");
+    Debug("休眠时间：" + String(DelayTime) + "分\n");
+    DelayTime = DelayTime * 60 * 1000000;
+    Debug(String(DelayTime) + "us\n");
     // 设置唤醒时间
-    esp_sleep_enable_timer_wakeup(DelayTime * 60 * 1000000);
+    esp_sleep_enable_timer_wakeup(DelayTime);
     // 进入深度睡眠状态
     esp_deep_sleep_start();
   }

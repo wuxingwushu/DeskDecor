@@ -3,17 +3,27 @@
 
 DynamicJsonDocument doc(2000);
 
-HitokotoInfo GetHitokoto(){
+HitokotoInfo GetHitokoto(unsigned int AttemptCount){
+  Debug("一言:\n");
   // 执行HTTP请求
   HTTPClient http;
   http.begin("https://v1.hitokoto.cn");//https://v1.hitokoto.cn/?lang=zh
-  DEV_Delay_ms(100);
-  int httpCode = http.GET();
+  int httpCode;
+  // 多次尝试获取内容
+  while(AttemptCount--){
+    Debug('.');
+    DEV_Delay_ms(100);
+    httpCode = http.GET();
+    if(httpCode == HTTP_CODE_OK){
+      break;
+    }
+  }
+  Debug('\n');
   HitokotoInfo HInfo;
+  // 判断内容是否获取成功
   if (httpCode == HTTP_CODE_OK) {
     String payload = http.getString();
-    Debug("\n");
-    Debug(payload);
+    Debug(payload + "\n");
 
     // 解析JSON
     deserializeJson(doc, payload);
@@ -23,13 +33,14 @@ HitokotoInfo GetHitokoto(){
     HInfo.from = doc["from"];
     HInfo.Success = true;
 
-    Debug("\nHitokoto: ");
-    Debug(HInfo.hitokoto);
+    Debug("Hitokoto: ");
+    Debug(HInfo.hitokoto );
     Debug("\nFrom: ");
     Debug(HInfo.from);
+    Debug("\n");
   } else {
     HInfo.Success = false;
-    Debug("HTTP request failed");
+    Debug("HTTP request failed\n");
   }
 
   http.end();

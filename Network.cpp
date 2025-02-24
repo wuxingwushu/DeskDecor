@@ -4,34 +4,76 @@
 #include "Debug.h"
 #include <WiFi.h>
 
+// Wed服务器
 WebServer server(80);
 
-NetworkCase ConnectWIFI()
-{
-  // 读取字符串
-  String ssidConfig = readStringFromEEPROM(WifiNameAddr);
-  String passwordConfig = readStringFromEEPROM(WifiPassAddr);
-  Debug("链接：" + ssidConfig + "," + passwordConfig + "\n");
+NetworkCase ConnectWIFI() {
+  /* 查询是否有以知WIFI */
 
+  // 获取所以WIFI名字
+  String WifiNameS[WifiDateMaxSize];
+  Debug("以知WIFI\n");
+  for (unsigned int i = 0; i < WifiDateMaxSize; ++i) {
+    WifiNameS[i] = readStringFromEEPROM(WifiNameAddr + (WiFiStrInterval * i));
+    Debug(WifiNameS[i] + "\n");
+  }
+
+  unsigned int InldeWIFI = WifiDateMaxSize;  // 当前选择WIFI 序号
+  int WiFiSize = WiFi.scanNetworks();        // 查询附近有什么WIFI
+  String WifiName;                           // WIFI 名字（临时值）
+  int RSSI = -10000;                         // 信号强度 （越大越强, 值为 0 是 RSSI 信号最强意思）
+  for (size_t i = 0; i < InldeWIFI; i++) {
+    WifiName = WiFi.SSID(i);
+    // 信号是否有所增加
+    if (WiFi.RSSI(i) > RSSI) {
+      // 查询是否有这个WIFI信息
+      for (unsigned int i = 0; i < WifiDateMaxSize; ++i) {
+        if (WifiNameS[i] == WifiName) {
+          // 选择这个WIFI
+          InldeWIFI = i;
+          RSSI = WiFi.RSSI(i);
+        }
+      }
+    }
+  }
+
+  int Count = 0;  // 尝试链接次数
   // 初始化 12引脚口
   pinMode(12, INPUT_PULLUP);
+  if (InldeWIFI == WifiDateMaxSize) {
+    Debug("不存在网络\n");
+    while (true) {
+      if (digitalRead(12) == 0) {
+        Debug("Wed服务\n");
+        return Network_Wed;
+      }
+      ++Count;
+      if (Count > 50) {  // 几次后没法连接判定为没有网络
+        return Network_Not;
+      }
+    }
+  }
 
+
+  /************************/
+
+  // 读取字符串
+  String ssidConfig = WifiNameS[InldeWIFI];
+  String passwordConfig = readStringFromEEPROM(WifiPassAddr + (WiFiStrInterval * InldeWIFI));
+  Debug("链接：" + ssidConfig + "," + passwordConfig + "\n");
   // 启用WiFi模块
   WiFi.mode(WIFI_STA);
   // 连接WiFi
   WiFi.begin(ssidConfig, passwordConfig);
 
-  int Count = 0;// 尝试链接次数
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    if (digitalRead(12) == 0)
-    {
+
+  while (WiFi.status() != WL_CONNECTED) {
+    if (digitalRead(12) == 0) {
       Debug("\nWed服务\n");
       return Network_Wed;
     }
     ++Count;
-    if (Count > 50)
-    { // 几次后没法连接判定为没有网络
+    if (Count > 50) {  // 几次后没法连接判定为没有网络
       Debug("\n连接失败\n");
       return Network_Not;
     }
@@ -42,8 +84,7 @@ NetworkCase ConnectWIFI()
   return Network_Ok;
 }
 
-String WebServerFun()
-{
+String WebServerFun() {
   // 确保首先断开了STA模式下的任何连接
   WiFi.disconnect(true);
 
@@ -54,7 +95,7 @@ String WebServerFun()
   // 定义根路径的回调函数
   server.on("/", handleRoot);
   server.on("/wifi", handleWifi);
-  server.on("/wifi/config", HTTP_POST, handleWifiConfig); // 提交Wi-Fi信息进行连接
+  server.on("/wifi/config", HTTP_POST, handleWifiConfig);  // 提交Wi-Fi信息进行连接
   server.on("/set", handleSet);
   server.on("/set/config", HTTP_POST, handleSetConfig);
   server.on("/restart", handleRestart);
@@ -66,13 +107,11 @@ String WebServerFun()
 }
 
 // 根路径请求的处理函数
-void handleRoot()
-{
+void handleRoot() {
   server.send(200, "text/html", RootHtml);
 }
 
-void handleSet()
-{
+void handleSet() {
   String SethtmlForm = R"rawliteral(
 <!DOCTYPE HTML>
 <html>
@@ -174,14 +213,30 @@ void handleSet()
   SethtmlForm += String(shu) + SethtmlForm2;
 
   String TimeString = "";
-  if(StartHours < 10){TimeString += "0" + String(StartHours);}else{TimeString += String(StartHours);}
+  if (StartHours < 10) {
+    TimeString += "0" + String(StartHours);
+  } else {
+    TimeString += String(StartHours);
+  }
   TimeString += ":";
-  if(StartMinutes < 10){TimeString += "0" + String(StartMinutes);}else{TimeString += String(StartMinutes);}
+  if (StartMinutes < 10) {
+    TimeString += "0" + String(StartMinutes);
+  } else {
+    TimeString += String(StartMinutes);
+  }
   SethtmlForm.replace("08:00", TimeString);
   TimeString = "";
-  if(EndHours < 10){TimeString += "0" + String(EndHours);}else{TimeString += String(EndHours);}
+  if (EndHours < 10) {
+    TimeString += "0" + String(EndHours);
+  } else {
+    TimeString += String(EndHours);
+  }
   TimeString += ":";
-  if(EndMinutes < 10){TimeString += "0" + String(EndMinutes);}else{TimeString += String(EndMinutes);}
+  if (EndMinutes < 10) {
+    TimeString += "0" + String(EndMinutes);
+  } else {
+    TimeString += String(EndMinutes);
+  }
   SethtmlForm.replace("17:30", TimeString);
   SethtmlForm.replace("22.9882", String(LatitudeVal));
   SethtmlForm.replace("114.3198", String(LongitudeVal));
@@ -189,8 +244,7 @@ void handleSet()
   server.send(200, "text/html", SethtmlForm);
 }
 
-void handleWifi()
-{ // HTML表单，供用户输入Wi-Fi信息
+void handleWifi() {  // HTML表单，供用户输入Wi-Fi信息
   const String htmlForm1 = R"rawliteral(
 <!DOCTYPE HTML>
 <html>
@@ -287,8 +341,7 @@ void handleWifi()
   // 扫描附近WiFi
   int n = WiFi.scanNetworks();
   String WifiNameS = "";
-  for (size_t i = 0; i < n; i++)
-  {
+  for (size_t i = 0; i < n; i++) {
     WifiNameS += "<div class=\"wifi-item\" onclick=\"showPasswordInput(this)\">" + WiFi.SSID(i) + "</div>";
   }
   const String htmlForm2 = R"rawliteral(
@@ -325,14 +378,13 @@ void handleWifi()
 }
 
 // 处理WiFi配置提交
-void handleWifiConfig()
-{
+void handleWifiConfig() {
   String ssidConfig = server.arg("ssid");
   String passwordConfig = server.arg("password");
 
-  Debug(ssidConfig);
-  Debug("\n");
-  Debug(passwordConfig);
+  Debug("设置wifi\n");
+  Debug("名字：" + ssidConfig + "\n");
+  Debug("密码：" + passwordConfig + "\n");
 
   writeStringToEEPROM(WifiNameAddr, ssidConfig);
   writeStringToEEPROM(WifiPassAddr, passwordConfig);
@@ -348,52 +400,60 @@ void handleWifiConfig()
 }
 
 // 处理WiFi配置提交
-void handleSetConfig()
-{
+void handleSetConfig() {
   String timeConfig = server.arg("TimeVal");
-  Debug(timeConfig.toInt());Debug("\n");
+  Debug(timeConfig.toInt());
+  Debug("\n");
   String StartTimeConfig = server.arg("StartTime");
-  Debug(StartTimeConfig);Debug("\n");
+  Debug(StartTimeConfig);
+  Debug("\n");
   String EndTimeConfig = server.arg("EndTime");
-  Debug(EndTimeConfig);Debug("\n");
+  Debug(EndTimeConfig);
+  Debug("\n");
   String LatitudeConfig = server.arg("Latitude");
-  Debug(LatitudeConfig);Debug("\n");
+  Debug(LatitudeConfig);
+  Debug("\n");
   String LongitudeConfig = server.arg("Longitude");
-  Debug(LongitudeConfig);Debug("\n");
+  Debug(LongitudeConfig);
+  Debug("\n");
 
   // 读取字符串
   int shu = timeConfig.toInt();
   EEPROM.put(SleepValueAddr, shu);
   unsigned char HMData = StartTimeConfig.substring(0, 2).toInt();
   EEPROM.put(StartTimeHoursAddr, HMData);
-  Debug(((int)HMData));Debug("\n");
+  Debug(((int)HMData));
+  Debug("\n");
   HMData = StartTimeConfig.substring(3, 5).toInt();
   EEPROM.put(StartTimeMinutesAddr, HMData);
-  Debug(((int)HMData));Debug("\n");
+  Debug(((int)HMData));
+  Debug("\n");
   HMData = EndTimeConfig.substring(0, 2).toInt();
   EEPROM.put(EndTimeHoursAddr, HMData);
-  Debug(((int)HMData));Debug("\n");
+  Debug(((int)HMData));
+  Debug("\n");
   HMData = EndTimeConfig.substring(3, 5).toInt();
   EEPROM.put(EndTimeMinutesAddr, HMData);
-  Debug(((int)HMData));Debug("\n");
+  Debug(((int)HMData));
+  Debug("\n");
   float LXXitude = LatitudeConfig.toFloat();
   EEPROM.put(LatitudeAddr, LXXitude);
   LXXitude = LongitudeConfig.toFloat();
   EEPROM.put(LongitudeAddr, LXXitude);
   EEPROM.commit();
-  
+
   server.send(200, "text/html", RootHtml);
 
   // 调用esp_restart()函数进行重启
   // esp_restart();
 }
 
-void handleRestart()
-{
+void handleRestart() {
   // 提示用户已提交WiFi信息
   String response = "<h1>重启中...</h1>";
   server.send(200, "text/html", response);
   // 调用esp_restart() 函数进行重启
+  Debug("重启\n");
   esp_restart();
 }
 

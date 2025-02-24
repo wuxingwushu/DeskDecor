@@ -12,7 +12,7 @@
 #define ADC_PIN     ADC1_CHANNEL_0      // ADC通道0
 
 #define MinVoltage 1230 // voltage 最小1230
-#define MaxVoltage 1370 // voltage 最大1390
+#define MaxVoltage 1390 // voltage 最大1390
 #define VoltageRange (MaxVoltage - MinVoltage) // 电压量程
 
 // 初始化ADC

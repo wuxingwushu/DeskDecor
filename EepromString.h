@@ -4,7 +4,7 @@
 #include <string.h>
 #include <EEPROM.h>
 
-#define EepromBufferSize 512  // 存储空间大小
+#define EepromBufferSize 1024  // 存储空间大小
 #define ImgIndexAddr 0        // 下一张图片索引（int）
 #define SleepValueAddr 4      // 休眠时间（int）
 
@@ -16,8 +16,10 @@
 #define LatitudeAddr 12   // 纬度（float）
 #define LongitudeAddr 16  // 经度（float）
 
+#define WiFiStrInterval 200  // WIFI 数据间隔（WIFI 数据空间大小）
 #define WifiNameAddr 20   // WIFI 名字（char*）
-#define WifiPassAddr 400  // WIFI 密码（char*）
+#define WifiPassAddr (WifiNameAddr + (WiFiStrInterval / 2))  // WIFI 密码（char*）
+#define WifiDateMaxSize ((EepromBufferSize - WifiNameAddr) / WiFiStrInterval) // 可以储存 WIFI数据 数量
 
 // 将字符串写入EEPROM
 void writeStringToEEPROM(int startAddress, String message);

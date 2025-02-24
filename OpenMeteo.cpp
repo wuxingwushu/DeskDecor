@@ -4,6 +4,7 @@
 
 const char *OpenMeteoHtml = "https://api.open-meteo.com/v1/forecast?latitude=22.9882&longitude=114.3198&current=temperature_2m,weather_code&timezone=Asia%2FSingapore&forecast_days=1";
 
+// 3*5 数字 0~9
 unsigned char ShuPixData[10][2] = {
   { 0xF6, 0xCE },  // 0
   { 0x48, 0x24 },  // 1
@@ -17,7 +18,8 @@ unsigned char ShuPixData[10][2] = {
   { 0xF7, 0x9E }   // 9
 };
 
-OpenMeteoInfo GetOpenMeteo() {
+OpenMeteoInfo GetOpenMeteo(unsigned int AttemptCount) {
+  Debug("天气:\n");
   String OpenMeteoHtml1 = "https://api.open-meteo.com/v1/forecast?latitude=";
   String OpenMeteoHtml2 = "&longitude=";
   String OpenMeteoHtml3 = "&current=temperature_2m,weather_code&timezone=Asia%2FSingapore&forecast_days=1";
@@ -26,18 +28,26 @@ OpenMeteoInfo GetOpenMeteo() {
   OpenMeteoHtml1 += String(Lxxitude) + OpenMeteoHtml2;
   EEPROM.get(LongitudeAddr, Lxxitude);
   OpenMeteoHtml1 += String(Lxxitude) + OpenMeteoHtml3;
-  Debug("\n" + OpenMeteoHtml1);
+  Debug(OpenMeteoHtml1 + "\n");
 
   // 执行HTTP请求
   HTTPClient http;
   http.begin(OpenMeteoHtml1);
-  DEV_Delay_ms(100);
-  int httpCode = http.GET();
+  int httpCode;
+  while(AttemptCount--){
+    Debug('.');
+    DEV_Delay_ms(100);
+    httpCode = http.GET();
+    if(httpCode == HTTP_CODE_OK){
+      break;
+    }
+  }
+  Debug('\n');
   OpenMeteoInfo OInfo;
-  OInfo.Success = false;
+  // 判断是否获取内容失败
   if (httpCode == HTTP_CODE_OK) {
     String payload = http.getString();
-    Debug("\n" + payload);
+    Debug(payload + "\n");
 
     // 解析JSON
     DynamicJsonDocument doc(4000);
@@ -49,7 +59,10 @@ OpenMeteoInfo GetOpenMeteo() {
     String temperature = doc["current"]["temperature_2m"];  //当天温度
     OInfo.Temperature = temperature;
     OInfo.Success = true;
-    Debug("\n天氣代碼: " + weather + "\t溫度: " + temperature);
+    Debug("天氣代碼: " + weather + "\t溫度: " + temperature + "\n");
+  }else{
+    OInfo.Success = false;
+    Debug("Error: GetOpenMeteo() fail !\n");
   }
   http.end();
 
