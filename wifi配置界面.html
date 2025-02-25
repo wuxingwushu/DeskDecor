@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
-
 <head>
+  <meta http-equiv="Content-Type" content="text/html; width=device-width, initial-scale=1.0,charset=utf-8" />
   <title>WiFi 配置界面</title>
   <style>
     /* 新增数字选择框样式 */
@@ -16,6 +16,7 @@
     .number-select {
       margin: 15px 0;
       display: flex;
+      flex-direction: column;
       justify-content: space-between;
     }
 
@@ -31,8 +32,10 @@
     .number-option label {
       display: block;
       padding: 8px;
-      background: #21262d;
+      background: #2ea043;
+      border-color: #279f42;
       border: 1px solid #30363d;
+      color: #c9d1d9;
       border-radius: 4px;
       text-align: center;
       cursor: pointer;
@@ -138,49 +141,52 @@
   </div>
   
   <form action="/wifi/config" method="POST" id="passwordForm" class="form-container hidden">
-    <label for="ssid">WiFi名称:</label>
+    <label for="ssid" id="WifiName">WiFi名称:</label>
     <input type="text" id="ssid" placeholder="请输入WiFi名称" name="ssid" class="form-input" required>
-    <label for="password">WiFi密码:</label>
+    <label for="password" id="WifiPassword">WiFi密码:</label>
     <input type="password" id="password" placeholder="请输入WiFi密码" name="password" class="form-input" required>
-
+  
     <!-- 数字选择区域 -->
     <div id="numberSelect">
+      <label>选择被覆盖WiFi:</label>
       <div class="number-select">
         <div class="number-option">
-          <input type="radio" id="num1" name="number" value="1" onchange="handleNumberSelect()">
-          <label for="num1">1</label>
+          <input type="radio" id="num1" name="number" value="0" onchange="handleNumberSelect()">
+          <label for="num1">CoverObject0</label>
         </div>
         <div class="number-option">
-          <input type="radio" id="num2" name="number" value="2" onchange="handleNumberSelect()">
-          <label for="num2">2</label>
+          <input type="radio" id="num2" name="number" value="1" onchange="handleNumberSelect()">
+          <label for="num2">CoverObject1</label>
         </div>
         <div class="number-option">
-          <input type="radio" id="num3" name="number" value="3" onchange="handleNumberSelect()">
-          <label for="num3">3</label>
+          <input type="radio" id="num3" name="number" value="2" onchange="handleNumberSelect()">
+          <label for="num3">CoverObject2</label>
         </div>
         <div class="number-option">
-          <input type="radio" id="num4" name="number" value="4" onchange="handleNumberSelect()">
-          <label for="num4">4</label>
+          <input type="radio" id="num4" name="number" value="3" onchange="handleNumberSelect()">
+          <label for="num4">CoverObject3</label>
         </div>
         <div class="number-option">
-          <input type="radio" id="num5" name="number" value="5" onchange="handleNumberSelect()">
-          <label for="num5">5</label>
+          <input type="radio" id="num5" name="number" value="4" onchange="handleNumberSelect()">
+          <label for="num5">CoverObject4</label>
         </div>
       </div>
     </div>
 
-    <button type="button" class="submit-button" onclick="handleConnect()">连接</button>
-    <button type="button" class="submit-button" onclick="Fh()">返回</button>
+    <button type="button" id="ButtonJoin" class="submit-button" onclick="handleConnect()">连接</button>
+    <button type="button" id="ButtonReturn" class="submit-button" onclick="ReturnInterface()">返回</button>
   </form>
 </body>
 <script>
+  // 进入密码填写界面
   function showPasswordInput(element) {
     document.getElementById("liebiao").classList.add("hidden");
     document.getElementById("passwordForm").classList.remove("hidden");
     document.getElementById("ssid").value = element.textContent;
   }
 
-  function Fh() {
+  // 返回WIFI扫描界面
+  function ReturnInterface() {
     document.getElementById("liebiao").classList.remove("hidden");
     document.getElementById("passwordForm").classList.add("hidden");
     // 重置表单状态
@@ -188,6 +194,7 @@
     document.querySelectorAll('input[name="number"]').forEach(radio => radio.checked = false);
   }
 
+  // 显示选择被覆盖WIFI信息
   function handleConnect() {
     const ssid = document.getElementById("ssid").value;
     const password = document.getElementById("password").value;
@@ -199,8 +206,17 @@
     
     // 显示数字选择区域
     document.getElementById("numberSelect").classList.add("show");
+
+    // 隐藏不需要的内容
+    document.getElementById("ssid").classList.add("hidden");
+    document.getElementById("password").classList.add("hidden");
+    document.getElementById("ButtonJoin").classList.add("hidden");
+    document.getElementById("ButtonReturn").classList.add("hidden");
+    document.getElementById("WifiName").classList.add("hidden");
+    document.getElementById("WifiPassword").classList.add("hidden");
   }
 
+  // 发送表单
   function handleNumberSelect() {
     const selected = document.querySelector('input[name="number"]:checked');
     if (selected) {

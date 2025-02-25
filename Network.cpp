@@ -8,6 +8,15 @@
 WebServer server(80);
 
 NetworkCase ConnectWIFI() {
+  // 启用WiFi模块
+  WiFi.mode(WIFI_STA);
+  // 初始化 12引脚口
+  pinMode(12, INPUT_PULLUP);
+  if (digitalRead(12) == 0) {
+    Debug("Wed服务\n");
+    return Network_Wed;
+  }
+
   /* 查询是否有以知WIFI */
 
   // 获取所以WIFI名字
@@ -22,15 +31,15 @@ NetworkCase ConnectWIFI() {
   int WiFiSize = WiFi.scanNetworks();        // 查询附近有什么WIFI
   String WifiName;                           // WIFI 名字（临时值）
   int RSSI = -10000;                         // 信号强度 （越大越强, 值为 0 是 RSSI 信号最强意思）
-  for (size_t i = 0; i < InldeWIFI; i++) {
+  for (unsigned int i = 0; i < InldeWIFI; i++) {
     WifiName = WiFi.SSID(i);
     // 信号是否有所增加
     if (WiFi.RSSI(i) > RSSI) {
       // 查询是否有这个WIFI信息
-      for (unsigned int i = 0; i < WifiDateMaxSize; ++i) {
-        if (WifiNameS[i] == WifiName) {
+      for (unsigned int k = 0; k < WifiDateMaxSize; ++k) {
+        if (WifiNameS[k] == WifiName) {
           // 选择这个WIFI
-          InldeWIFI = i;
+          InldeWIFI = k;
           RSSI = WiFi.RSSI(i);
         }
       }
@@ -38,9 +47,8 @@ NetworkCase ConnectWIFI() {
   }
 
   int Count = 0;  // 尝试链接次数
-  // 初始化 12引脚口
-  pinMode(12, INPUT_PULLUP);
-  if (InldeWIFI == WifiDateMaxSize) {
+
+  if (InldeWIFI == WifiDateMaxSize) {  // 当没有查到对应WIFI时只判断是否进入Wed模式
     Debug("不存在网络\n");
     while (true) {
       if (digitalRead(12) == 0) {
@@ -48,9 +56,10 @@ NetworkCase ConnectWIFI() {
         return Network_Wed;
       }
       ++Count;
-      if (Count > 50) {  // 几次后没法连接判定为没有网络
+      if (Count > 20) {  // 几次后没法连接判定为没有网络
         return Network_Not;
       }
+      DEV_Delay_ms(100);
     }
   }
 
@@ -61,15 +70,13 @@ NetworkCase ConnectWIFI() {
   String ssidConfig = WifiNameS[InldeWIFI];
   String passwordConfig = readStringFromEEPROM(WifiPassAddr + (WiFiStrInterval * InldeWIFI));
   Debug("链接：" + ssidConfig + "," + passwordConfig + "\n");
-  // 启用WiFi模块
-  WiFi.mode(WIFI_STA);
+
   // 连接WiFi
   WiFi.begin(ssidConfig, passwordConfig);
 
-
   while (WiFi.status() != WL_CONNECTED) {
     if (digitalRead(12) == 0) {
-      Debug("\nWed服务\n");
+      Debug("Wed服务\n");
       return Network_Wed;
     }
     ++Count;
@@ -116,6 +123,7 @@ void handleSet() {
 <!DOCTYPE HTML>
 <html>
 <head>
+  <meta http-equiv="Content-Type" content="text/html; width=device-width, initial-scale=1.0,charset=utf-8"/>
   <title>ESP32 设置界面</title>
   <style>
     body{
@@ -245,24 +253,60 @@ void handleSet() {
 }
 
 void handleWifi() {  // HTML表单，供用户输入Wi-Fi信息
-  const String htmlForm1 = R"rawliteral(
+  String htmlForm = R"rawliteral(
 <!DOCTYPE HTML>
 <html>
 <head>
+  <meta http-equiv="Content-Type" content="text/html; width=device-width, initial-scale=1.0,charset=utf-8"/>
   <title>WiFi 配置界面</title>
   <style>
-    /* 样式 */
-    body, html {
+    #numberSelect {
+      margin-top: 15px;
+      display: none;
+    }
+    #numberSelect.show {
+      display: block;
+    }
+    .number-select {
+      margin: 15px 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .number-option {
+      flex: 1;
+      margin: 0 2px;
+    }
+    .number-option input[type="radio"] {
+      display: none;
+    }
+    .number-option label {
+      display: block;
+      padding: 8px;
+      background: #2ea043;
+      border-color: #279f42;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      border-radius: 4px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .number-option input[type="radio"]:checked+label {
+      background: #2ea043;
+      border-color: #279f42;
+    }
+    body,
+    html {
       height: 100vh;
       margin: 0;
       font-family: 'SF Mono', 'Roboto Mono', monospace;
       display: flex;
       justify-content: center;
       align-items: center;
-      background-color: #24292e; /* 暗色背景 */
-      color: #c9d1d9; /* 浅色文字 */
+      background-color: #24292e;
+      color: #c9d1d9;
     }
-
     .wifi-container {
       width: 100vh;
       max-width: 50vh;
@@ -271,8 +315,7 @@ void handleWifi() {  // HTML表单，供用户输入Wi-Fi信息
       overflow: hidden;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
-
-    .wifi-item {      
+    .wifi-item {
       padding: 5vh;
       width: 100%;
       transition: background-color 0.3s ease;
@@ -280,15 +323,12 @@ void handleWifi() {  // HTML表单，供用户输入Wi-Fi信息
       border-bottom: 1px solid #30363d;
       text-align: center;
     }
-
     .wifi-item:hover {
       background-color: #21262d;
     }
-
     .hidden {
       display: none;
     }
-
     .form-input {
       width: calc(100% - 20px);
       padding: 10px;
@@ -300,11 +340,9 @@ void handleWifi() {  // HTML表单，供用户输入Wi-Fi信息
       color: #c9d1d9;
       transition: border-color 0.3s ease;
     }
-
     .form-input:focus {
       border-color: #58a6ff;
     }
-
     .submit-button {
       width: 100%;
       padding: 10px;
@@ -316,18 +354,15 @@ void handleWifi() {  // HTML表单，供用户输入Wi-Fi信息
       cursor: pointer;
       transition: background-color 0.3s ease;
     }
-
     .submit-button:hover {
       background-color: #279f42;
     }
-
     .form-container {
       padding: 20px;
       background-color: #161b22;
       border-radius: 6px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
-
     label {
       display: block;
       margin-bottom: 5px;
@@ -340,63 +375,108 @@ void handleWifi() {  // HTML表单，供用户输入Wi-Fi信息
     )rawliteral";
   // 扫描附近WiFi
   int n = WiFi.scanNetworks();
-  String WifiNameS = "";
   for (size_t i = 0; i < n; i++) {
-    WifiNameS += "<div class=\"wifi-item\" onclick=\"showPasswordInput(this)\">" + WiFi.SSID(i) + "</div>";
+    htmlForm += "<div class=\"wifi-item\" onclick=\"showPasswordInput(this)\">" + WiFi.SSID(i) + "</div>";
   }
-  const String htmlForm2 = R"rawliteral(
+  htmlForm += R"rawliteral(
 </div>
   <form action="/wifi/config" method="POST" id="passwordForm" class="form-container hidden">
-    <label for="ssid">WiFi名称:</label>
+    <label for="ssid" id="WifiName">WiFi名称:</label>
     <input type="text" id="ssid" placeholder="请输入WiFi名称" name="ssid" class="form-input" required>
-    <label for="password">WiFi密码:</label>
+    <label for="password" id="WifiPassword">WiFi密码:</label>
     <input type="password" id="password" placeholder="请输入WiFi密码" name="password" class="form-input" required>
-    <button type="submit" class="submit-button">连接</button>
-    <button type="button" class="submit-button" onclick="Fh()">返回</button>
+    <div id="numberSelect">
+      <label>选择被覆盖WiFi:</label>
+        )rawliteral";
+
+  for (unsigned int i = 0; i < WifiDateMaxSize; ++i) {
+    String WIFIINFO = R"rawliteral(<div class="number-option">
+          <input type="radio" id=")rawliteral";
+    WIFIINFO += "num" + String(i);
+    WIFIINFO += R"rawliteral(" name="number" value=")rawliteral";
+    WIFIINFO += String(i);
+    WIFIINFO += R"rawliteral(" onchange="handleNumberSelect()">
+          <label for=")rawliteral";
+    WIFIINFO += "num" + String(i);
+    WIFIINFO += "\">" + readStringFromEEPROM(WifiNameAddr + (WiFiStrInterval * i));
+    WIFIINFO += R"rawliteral(</label>
+        </div>)rawliteral";
+    htmlForm += WIFIINFO;
+    Debug(WIFIINFO + "\n");
+  }
+
+  htmlForm += R"rawliteral(
+      </div>
+    </div>
+
+    <button type="button" id="ButtonJoin" class="submit-button" onclick="handleConnect()">连接</button>
+    <button type="button" id="ButtonReturn" class="submit-button" onclick="ReturnInterface()">返回</button>
   </form>
 </body>
 <script>
   function showPasswordInput(element) {
-    var le = document.getElementById("liebiao");
-    le.classList.add("hidden");
-    var form = document.getElementById("passwordForm");
-    form.classList.remove("hidden"); // 显示
-    form.querySelector("#ssid").value = element.textContent;
+    document.getElementById("liebiao").classList.add("hidden");
+    document.getElementById("passwordForm").classList.remove("hidden");
+    document.getElementById("ssid").value = element.textContent;
   }
-
-  function Fh() {
-    var le = document.getElementById("liebiao");
-    le.classList.remove("hidden");
-    var form = document.getElementById("passwordForm");
-    form.classList.add("hidden");
+  function ReturnInterface() {
+    document.getElementById("liebiao").classList.remove("hidden");
+    document.getElementById("passwordForm").classList.add("hidden");
+    document.getElementById("numberSelect").classList.remove("show");
+    document.querySelectorAll('input[name="number"]').forEach(radio => radio.checked = false);
+  }
+  function handleConnect() {
+    const ssid = document.getElementById("ssid").value;
+    const password = document.getElementById("password").value;
+    if (!ssid || !password) {
+      alert("请先填写WiFi名称和密码");
+      return;
+    }
+    document.getElementById("numberSelect").classList.add("show");
+    document.getElementById("ssid").classList.add("hidden");
+    document.getElementById("password").classList.add("hidden");
+    document.getElementById("ButtonJoin").classList.add("hidden");
+    document.getElementById("ButtonReturn").classList.add("hidden");
+    document.getElementById("WifiName").classList.add("hidden");
+    document.getElementById("WifiPassword").classList.add("hidden");
+  }
+  function handleNumberSelect() {
+    const selected = document.querySelector('input[name="number"]:checked');
+    if (selected) {
+      document.getElementById("passwordForm").submit();
+    }
   }
 </script>
 </html>
     )rawliteral";
   Debug("提供Wed服务\n");
-  server.send(200, "text/html", htmlForm1 + WifiNameS + htmlForm2);
+  server.send(200, "text/html", htmlForm);
 }
 
 // 处理WiFi配置提交
 void handleWifiConfig() {
+  unsigned int NumberConfig = server.arg("number").toInt();
   String ssidConfig = server.arg("ssid");
   String passwordConfig = server.arg("password");
 
+  if (ssidConfig.length() > (WiFiStrInterval / 2)) {
+    Debug("WiFi名字超出设定储存空间\n");
+    goto handleWifiConfigEnd;
+  }
+  if (passwordConfig.length() > (WiFiStrInterval / 2)) {
+    Debug("WiFi密码超出设定储存空间\n");
+    goto handleWifiConfigEnd;
+  }
+
   Debug("设置wifi\n");
+  Debug("位置：" + String(NumberConfig) + "\n");
   Debug("名字：" + ssidConfig + "\n");
   Debug("密码：" + passwordConfig + "\n");
 
-  writeStringToEEPROM(WifiNameAddr, ssidConfig);
-  writeStringToEEPROM(WifiPassAddr, passwordConfig);
-
-  // 读取字符串
-  ssidConfig = readStringFromEEPROM(WifiNameAddr);
-  passwordConfig = readStringFromEEPROM(WifiPassAddr);
-
+  writeStringToEEPROM(WifiNameAddr + (NumberConfig * WiFiStrInterval), ssidConfig);
+  writeStringToEEPROM(WifiPassAddr + (NumberConfig * WiFiStrInterval), passwordConfig);
+handleWifiConfigEnd:
   server.send(200, "text/html", RootHtml);
-
-  // 调用esp_restart()函数进行重启
-  // esp_restart();
 }
 
 // 处理WiFi配置提交

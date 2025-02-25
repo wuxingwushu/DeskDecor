@@ -45,11 +45,11 @@ void setup() {
     return;
   }
   DEV_Delay_ms(10);
-  
-  unsigned int DelayTime;       // 延迟时间（分）
+
+  unsigned int DelayTime;                 // 延迟时间（分）
   EEPROM.get(SleepValueAddr, DelayTime);  // 獲取一言刷新間隔時間（分）
-  CaseInfo = ConnectWIFI();     // 连接wifi
-  if (CaseInfo == Network_Wed)  // 开启Wed服务
+  CaseInfo = ConnectWIFI();               // 连接wifi
+  if (CaseInfo == Network_Wed)            // 开启Wed服务
   {
     String IPstr = WebServerFun();               // 开启服务
     int SideSize = QR(IPstr.c_str(), PosRight);  // 显示服务 IP
@@ -62,27 +62,27 @@ void setup() {
   {
     // 获取 一言内容 和 显示
     HitokotoInfo InfoD = GetHitokoto(10);  // 获取 一言 内容
-    if(InfoD.Success){
+    if (InfoD.Success) {
       Debug("Hitokoto OK!\n");
       CN_Show(40, 0, InfoD.hitokoto);
       CN_Show(0, 100, InfoD.from);
-    }else{
+    } else {
       Debug("Error: GetHitokoto()\n");
     }
 
     // 天气信息
     OpenMeteoInfo infoM = GetOpenMeteo();
-    if(infoM.Success){
+    if (infoM.Success) {
       String WeatherInfo = GetMeteoToString(infoM.Weather) + "," + infoM.Temperature;
-        Debug(String(WeatherInfo) + "\n");
-        CN_Show(0, 76, WeatherInfo.c_str());
-    }else{
+      Debug(String(WeatherInfo) + "\n");
+      CN_Show(0, 76, WeatherInfo.c_str());
+    } else {
       Debug("Error: GetOpenMeteo()\n");
     }
 
     // 获取时间
     RequestPresentTime();
-    PresentTimeInfo InfoPT = GetDelayTime();// 时间信息
+    PresentTimeInfo InfoPT = GetDelayTime();  // 时间信息
     if (InfoPT.Success) {
       DelayTime = InfoPT.PresentTime;
       CN_Show(125, 76, InfoPT.PresentStr.c_str());
