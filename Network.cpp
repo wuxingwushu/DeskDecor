@@ -175,21 +175,32 @@ void handleSet() {
       border-radius: 6px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
-  </style>
 
-  <script>
-    function logFun(){
-      console.log("0k");
+    .switch-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 15px 0;
     }
-  </script>
 
+    .switch-label {
+      display: flex;
+      align-items: center;
+      font-size: 0.9em;
+    }
+
+    .switch-label input {
+      margin-right: 8px;
+    }
+  </style>
 </head>
 <body>
   <form action="/set/config" method="POST" id="passwordForm" class="form-container">
     <p>更新時間(分钟):</p>
     <input type="number" id="TimeVal" name="TimeVal" class="form-input" value=")rawliteral";
-  const String SethtmlForm2 = R"rawliteral(" oninput="logFun">
+  const String SethtmlForm2 = R"rawliteral(">
 
+    <p>（开始时间 等于 结束时间 代表不停止工作）</p>
     <p>开始时间:</p>
     <input type="time" id="StartTime" name="StartTime" class="form-input" required value="08:00" pattern="[0-2][0-9]:[0-5][0-9]" step="60" placeholder="例如: 08:00">
 
@@ -202,18 +213,96 @@ void handleSet() {
     <p>经度:</p>
     <input type="number" id="Longitude" name="Longitude" class="form-input" value="114.3198" step="0.0001" min="-180" max="180" placeholder="例如: 119.8562">
 
+    <p>功能开关:</p>
+    <div class="switch-container">
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="0" 0checked0>
+        循环模式
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="1" 1checked1>
+        一言
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="2" 2checked2>
+        ONE
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="3" 3checked3>
+        青桔
+      </label>
+    </div>
+
+    <input type="hidden" id="BoolFlage" name="BoolFlage">
+
     <button type="submit" class="submit-button">修改</button>
   </form>
+  <script>
+    document.getElementById('passwordForm').addEventListener('submit', function(e) {
+      const loopModeCheckbox = document.querySelector('.bool-switch[data-bit="0"]');
+      const otherCheckboxes = document.querySelectorAll('.bool-switch:not([data-bit="0"])');
+      
+      // 验证循环模式关闭时其他选项只能选一个
+      if (!loopModeCheckbox.checked) {
+        const checkedCount = Array.from(otherCheckboxes).filter(cb => cb.checked).length;
+        if (checkedCount > 1) {
+          alert('当“循环模式”关闭时，只能选择“青桔”、“ONE”或“一言”中的一个！');
+          e.preventDefault();
+          return;
+        }
+      }
+
+      // 原始flags计算逻辑
+      let flags = 0;
+      document.querySelectorAll('.bool-switch').forEach(checkbox => {
+        if (checkbox.checked) {
+          const bit = parseInt(checkbox.dataset.bit);
+          flags |= (1 << bit);
+        }
+      });
+      
+      document.getElementById('BoolFlage').value = flags;
+    });
+
+    // 实时交互逻辑
+    const loopModeCheckbox = document.querySelector('.bool-switch[data-bit="0"]');
+    const otherCheckboxes = document.querySelectorAll('.bool-switch[data-bit="1"], .bool-switch[data-bit="2"], .bool-switch[data-bit="3"]');
+
+    // 当循环模式状态改变时
+    loopModeCheckbox.addEventListener('change', function() {
+      if (!this.checked) {
+        // 关闭循环模式时，检查其他选项选择数量
+        const checked = Array.from(otherCheckboxes).filter(cb => cb.checked);
+        if (checked.length > 1) {
+          // 保留最后一个选中的，取消其他
+          checked.slice(0, -1).forEach(cb => cb.checked = false);
+        }
+      }
+    });
+
+    // 当其他选项改变时
+    otherCheckboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        if (!loopModeCheckbox.checked && this.checked) {
+          // 如果循环模式关闭且当前被选中，取消其他选项
+          otherCheckboxes.forEach(other => {
+            if (other !== this) other.checked = false;
+          });
+        }
+      });
+    });
+  </script>
 </body>
 </html>
   )rawliteral";
   int shu;
   EEPROM.get(SleepValueAddr, shu);
-  unsigned char StartHours, StartMinutes, EndHours, EndMinutes;
+  unsigned char StartHours, StartMinutes, EndHours, EndMinutes, APIPassage;
   EEPROM.get(StartTimeHoursAddr, StartHours);
   EEPROM.get(StartTimeMinutesAddr, StartMinutes);
   EEPROM.get(EndTimeHoursAddr, EndHours);
   EEPROM.get(EndTimeMinutesAddr, EndMinutes);
+  EEPROM.get(SentenceAPIPassageAddr, APIPassage);
   float LatitudeVal, LongitudeVal;
   EEPROM.get(LatitudeAddr, LatitudeVal);
   EEPROM.get(LongitudeAddr, LongitudeVal);
@@ -248,6 +337,11 @@ void handleSet() {
   SethtmlForm.replace("17:30", TimeString);
   SethtmlForm.replace("22.9882", String(LatitudeVal));
   SethtmlForm.replace("114.3198", String(LongitudeVal));
+  
+  SethtmlForm.replace("0checked0", APIPassage & 0x01 ? "checked" : "");
+  SethtmlForm.replace("1checked1", APIPassage & 0x02 ? "checked" : "");
+  SethtmlForm.replace("2checked2", APIPassage & 0x04 ? "checked" : "");
+  SethtmlForm.replace("3checked3", APIPassage & 0x08 ? "checked" : "");
 
   server.send(200, "text/html", SethtmlForm);
 }
@@ -482,22 +576,20 @@ handleWifiConfigEnd:
 // 处理WiFi配置提交
 void handleSetConfig() {
   String timeConfig = server.arg("TimeVal");
-  Debug(timeConfig.toInt());
-  Debug("\n");
+  Debug(timeConfig + "\n");
   String StartTimeConfig = server.arg("StartTime");
-  Debug(StartTimeConfig);
-  Debug("\n");
+  Debug(StartTimeConfig + "\n");
   String EndTimeConfig = server.arg("EndTime");
-  Debug(EndTimeConfig);
-  Debug("\n");
+  Debug(EndTimeConfig + "\n");
   String LatitudeConfig = server.arg("Latitude");
-  Debug(LatitudeConfig);
-  Debug("\n");
+  Debug(LatitudeConfig + "\n");
   String LongitudeConfig = server.arg("Longitude");
-  Debug(LongitudeConfig);
-  Debug("\n");
+  Debug(LongitudeConfig + "\n");
+  String BoolFlageConfig = server.arg("BoolFlage");
+  Debug(BoolFlageConfig + "\n");
 
   // 读取字符串
+  Debug("储存为:\n");
   int shu = timeConfig.toInt();
   EEPROM.put(SleepValueAddr, shu);
   unsigned char HMData = StartTimeConfig.substring(0, 2).toInt();
@@ -517,21 +609,27 @@ void handleSetConfig() {
   Debug(((int)HMData));
   Debug("\n");
   float LXXitude = LatitudeConfig.toFloat();
+  Debug(LXXitude);
+  Debug("\n");
   EEPROM.put(LatitudeAddr, LXXitude);
   LXXitude = LongitudeConfig.toFloat();
+  Debug(LXXitude);
+  Debug("\n");
   EEPROM.put(LongitudeAddr, LXXitude);
+  HMData = BoolFlageConfig.toInt();
+  Debug((int)HMData);
+  Debug("\n");
+  EEPROM.put(SentenceAPIPassageAddr, HMData);
   EEPROM.commit();
 
   server.send(200, "text/html", RootHtml);
-
-  // 调用esp_restart()函数进行重启
-  // esp_restart();
 }
 
 void handleRestart() {
   // 提示用户已提交WiFi信息
   String response = "<h1>重启中...</h1>";
   server.send(200, "text/html", response);
+  DEV_Delay_ms(100);
   // 调用esp_restart() 函数进行重启
   Debug("重启\n");
   esp_restart();

@@ -16,8 +16,11 @@
 #define LatitudeAddr 12   // 纬度（float）
 #define LongitudeAddr 16  // 经度（float）
 
+#define SentenceAPIAddr 20  // 当前是调用哪个 API（unsigned char）
+#define SentenceAPIPassageAddr 21  // 开启的API有那些（unsigned char）（第一个bit代表是否开始循环，最多7个API类型）
+
 #define WiFiStrInterval 200  // WIFI 数据间隔（WIFI 数据空间大小）
-#define WifiNameAddr 20   // WIFI 名字（char*）
+#define WifiNameAddr 24   // WIFI 名字（char*）
 #define WifiPassAddr (WifiNameAddr + (WiFiStrInterval / 2))  // WIFI 密码（char*）
 #define WifiDateMaxSize ((EepromBufferSize - WifiNameAddr) / WiFiStrInterval) // 可以储存 WIFI数据 数量
 

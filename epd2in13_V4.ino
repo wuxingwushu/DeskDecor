@@ -4,7 +4,7 @@
 #include "GUI_Paint.h"
 #include <stdlib.h>
 #include <Arduino.h>
-#include "Hitokoto.h"
+#include "Sentence.h"
 #include "ADC.h"
 #include <SPIFFS.h>
 #include "ImageData.h"
@@ -14,9 +14,6 @@
 #include "OpenMeteo.h"
 #include "PresentTime.h"
 // #include "WebDAV.h"
-
-// 显示缓冲
-UBYTE *BlackImage;
 
 // 当前网络状态
 NetworkCase CaseInfo;
@@ -29,6 +26,7 @@ void setup() {
   // 初始化 屏幕
   EPD_2in13_V4_Init();
   // 初始化屏幕内容
+  UBYTE *BlackImage;// 显示缓冲
   const UWORD Imagesize = ((EPD_2in13_V4_WIDTH % 8 == 0) ? (EPD_2in13_V4_WIDTH / 8) : (EPD_2in13_V4_WIDTH / 8 + 1)) * EPD_2in13_V4_HEIGHT;
   if ((BlackImage = (UBYTE *)malloc(Imagesize)) == NULL) {
     Debug("Failed to apply for black memory...\n");
@@ -44,6 +42,18 @@ void setup() {
     Debug("An Error has occurred while mounting SPIFFS\n");
     return;
   }
+#if 0
+  writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 0), "道生");
+  writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 0), "369784512");
+  writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 1), "KT-2.4G");
+  writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 1), "aurex123456");
+  writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 2), "CMCC-U55E");
+  writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 2), "eku7dx5f");
+  writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 3), "888");
+  writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 3), "Huangze123");
+  writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 4), "USER_028892");
+  writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 4), "88888888");
+#endif
   DEV_Delay_ms(10);
 
   unsigned int DelayTime;                 // 延迟时间（分）
@@ -61,7 +71,7 @@ void setup() {
   } else if (CaseInfo == Network_Ok)  // wifi连接成功
   {
     // 获取 一言内容 和 显示
-    HitokotoInfo InfoD = GetHitokoto(10);  // 获取 一言 内容
+    SentenceInfo InfoD = GetSentence();  // 获取 一言 内容
     if (InfoD.Success) {
       Debug("Hitokoto OK!\n");
       CN_Show(40, 0, InfoD.hitokoto);
@@ -77,6 +87,7 @@ void setup() {
       Debug(String(WeatherInfo) + "\n");
       CN_Show(0, 76, WeatherInfo.c_str());
     } else {
+      CN_Show(0, 76, "天气罢工啦!");
       Debug("Error: GetOpenMeteo()\n");
     }
 

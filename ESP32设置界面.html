@@ -53,20 +53,31 @@
       border-radius: 6px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
-  </style>
 
-  <script>
-    function logFun(){
-      console.log("0k");
+    .switch-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 15px 0;
     }
-  </script>
 
+    .switch-label {
+      display: flex;
+      align-items: center;
+      font-size: 0.9em;
+    }
+
+    .switch-label input {
+      margin-right: 8px;
+    }
+  </style>
 </head>
 <body>
   <form action="/set/config" method="POST" id="passwordForm" class="form-container">
     <p>更新時間(分钟):</p>
-    <input type="number" id="TimeVal" name="TimeVal" class="form-input" value="5" oninput="logFun">
+    <input type="number" id="TimeVal" name="TimeVal" class="form-input" value="5">
 
+    <p>（开始时间 等于 结束时间 代表不停止工作）</p>
     <p>开始时间:</p>
     <input type="time" id="StartTime" name="StartTime" class="form-input" required value="08:00" pattern="[0-2][0-9]:[0-5][0-9]" step="60" placeholder="例如: 08:00">
 
@@ -79,7 +90,84 @@
     <p>经度:</p>
     <input type="number" id="Longitude" name="Longitude" class="form-input" value="114.3198" step="0.0001" min="-180" max="180" placeholder="例如: 119.8562">
 
+    <p>功能开关:</p>
+    <div class="switch-container">
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="0" checked>
+        循环模式
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="1" checked>
+        一言
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="2" checked>
+        ONE
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="3" checked>
+        青桔
+      </label>
+    </div>
+
+    <input type="hidden" id="BoolFlage" name="BoolFlage">
+
     <button type="submit" class="submit-button">修改</button>
   </form>
+  <script>
+    document.getElementById('passwordForm').addEventListener('submit', function(e) {
+      const loopModeCheckbox = document.querySelector('.bool-switch[data-bit="0"]');
+      const otherCheckboxes = document.querySelectorAll('.bool-switch:not([data-bit="0"])');
+      
+      // 验证循环模式关闭时其他选项只能选一个
+      if (!loopModeCheckbox.checked) {
+        const checkedCount = Array.from(otherCheckboxes).filter(cb => cb.checked).length;
+        if (checkedCount > 1) {
+          alert('当“循环模式”关闭时，只能选择“青桔”、“ONE”或“一言”中的一个！');
+          e.preventDefault();
+          return;
+        }
+      }
+
+      // 原始flags计算逻辑
+      let flags = 0;
+      document.querySelectorAll('.bool-switch').forEach(checkbox => {
+        if (checkbox.checked) {
+          const bit = parseInt(checkbox.dataset.bit);
+          flags |= (1 << bit);
+        }
+      });
+      
+      document.getElementById('BoolFlage').value = flags;
+    });
+
+    // 实时交互逻辑
+    const loopModeCheckbox = document.querySelector('.bool-switch[data-bit="0"]');
+    const otherCheckboxes = document.querySelectorAll('.bool-switch[data-bit="1"], .bool-switch[data-bit="2"], .bool-switch[data-bit="3"]');
+
+    // 当循环模式状态改变时
+    loopModeCheckbox.addEventListener('change', function() {
+      if (!this.checked) {
+        // 关闭循环模式时，检查其他选项选择数量
+        const checked = Array.from(otherCheckboxes).filter(cb => cb.checked);
+        if (checked.length > 1) {
+          // 保留最后一个选中的，取消其他
+          checked.slice(0, -1).forEach(cb => cb.checked = false);
+        }
+      }
+    });
+
+    // 当其他选项改变时
+    otherCheckboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        if (!loopModeCheckbox.checked && this.checked) {
+          // 如果循环模式关闭且当前被选中，取消其他选项
+          otherCheckboxes.forEach(other => {
+            if (other !== this) other.checked = false;
+          });
+        }
+      });
+    });
+  </script>
 </body>
 </html>
