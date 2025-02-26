@@ -56,7 +56,7 @@ void setup() {
 #endif
   DEV_Delay_ms(10);
 
-  unsigned int DelayTime;                 // 延迟时间（分）
+  unsigned long long int DelayTime;                 // 延迟时间（分）
   EEPROM.get(SleepValueAddr, DelayTime);  // 獲取一言刷新間隔時間（分）
   CaseInfo = ConnectWIFI();               // 连接wifi
   if (CaseInfo == Network_Wed)            // 开启Wed服务
