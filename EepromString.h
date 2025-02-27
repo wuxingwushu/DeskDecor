@@ -6,18 +6,22 @@
 
 #define EepromBufferSize 1024  // 存储空间大小
 #define ImgIndexAddr 0        // 下一张图片索引（int）
-#define SleepValueAddr 4      // 休眠时间（int）
+#define SleepValueAddr 4      // 休眠时间（unsigned short）
 
-#define StartTimeHoursAddr 8  // 开始时间 时（unsigned char）
-#define StartTimeMinutesAddr 9  // 开始时间 分（unsigned char）
-#define EndTimeHoursAddr 10   // 结束时间 时（unsigned char）
-#define EndTimeMinutesAddr 11   // 结束时间 分（unsigned char）
+#define StartTimeHoursAddr 6  // 开始时间 时（unsigned char）
+#define StartTimeMinutesAddr 7  // 开始时间 分（unsigned char）
+#define EndTimeHoursAddr 8   // 结束时间 时（unsigned char）
+#define EndTimeMinutesAddr 9   // 结束时间 分（unsigned char）
 
-#define LatitudeAddr 12   // 纬度（float）
-#define LongitudeAddr 16  // 经度（float）
+#define LatitudeAddr 10   // 纬度（float）
+#define LongitudeAddr 14  // 经度（float）
 
-#define SentenceAPIAddr 20  // 当前是调用哪个 API（unsigned char）
-#define SentenceAPIPassageAddr 21  // 开启的API有那些（unsigned char）（第一个bit代表是否开始循环，最多7个API类型）
+#define SentenceAPIAddr 18  // 当前是调用哪个 API（unsigned char）
+#define SentenceAPIPassageAddr 19  // 开启的API有那些（unsigned char）（第一个bit代表是否开始循环，最多7个API类型）
+
+#define PresentTimeHoursAddr 20 // 当前时间 时（unsigned char）
+#define PresentTimeMinutesAddr 21 // 当前时间 分（unsigned char）
+#define PresentTimeSecondAddr 22 // 当前时间 秒（unsigned char）
 
 #define WiFiStrInterval 200  // WIFI 数据间隔（WIFI 数据空间大小）
 #define WifiNameAddr 24   // WIFI 名字（char*）

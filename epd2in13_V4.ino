@@ -13,12 +13,15 @@
 #include "EepromString.h"
 #include "OpenMeteo.h"
 #include "PresentTime.h"
+#include "FileSystem.h"
 // #include "WebDAV.h"
 
 // 当前网络状态
 NetworkCase CaseInfo;
 
 void setup() {
+  // 开始计算耗时
+  unsigned int ConsumeTime = millis();
   // 初始化 模块或设备
   DEV_Module_Init();
   // 初始化 EEPROM
@@ -42,7 +45,7 @@ void setup() {
     Debug("An Error has occurred while mounting SPIFFS\n");
     return;
   }
-#if 0
+#if 0 // 测试代码，可以删除
   writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 0), "道生");
   writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 0), "369784512");
   writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 1), "KT-2.4G");
@@ -54,9 +57,10 @@ void setup() {
   writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 4), "USER_028892");
   writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 4), "88888888");
 #endif
+  ShowFileInfo();
   DEV_Delay_ms(10);
 
-  unsigned long long int DelayTime;                 // 延迟时间（分）
+  unsigned short DelayTime;       // 延迟时间（分）
   EEPROM.get(SleepValueAddr, DelayTime);  // 獲取一言刷新間隔時間（分）
   CaseInfo = ConnectWIFI();               // 连接wifi
   if (CaseInfo == Network_Wed)            // 开启Wed服务
@@ -78,6 +82,8 @@ void setup() {
       CN_Show(0, 100, InfoD.from);
     } else {
       Debug("Error: GetHitokoto()\n");
+      CN_Show(40, 0, "获取句子失败! 是没网还是BUG……");
+      CN_Show(0, 100, "开发者");
     }
 
     // 天气信息
@@ -87,12 +93,13 @@ void setup() {
       Debug(String(WeatherInfo) + "\n");
       CN_Show(0, 76, WeatherInfo.c_str());
     } else {
-      CN_Show(0, 76, "天气罢工啦!");
       Debug("Error: GetOpenMeteo()\n");
+      CN_Show(0, 76, "天气罢工啦!");
     }
 
     // 获取时间
     RequestPresentTime();
+    ConsumeTime = millis();
     PresentTimeInfo InfoPT = GetDelayTime();  // 时间信息
     if (InfoPT.Success) {
       DelayTime = InfoPT.PresentTime;
@@ -113,6 +120,10 @@ void setup() {
     EEPROM.commit();
     // 显示图片
     Img_Show(EPD_2in13_V4_WIDTH, EPD_2in13_V4_HEIGHT, ImgD[Index]);
+
+    EEPROM.get(PresentTimeHoursAddr, TimeH);
+    EEPROM.get(PresentTimeMinutesAddr, TimeM);
+    EEPROM.get(PresentTimeSecondAddr, TimeS);
   }
 
   // 获取电压，显示电压
@@ -130,11 +141,37 @@ void setup() {
   }
 
   if (CaseInfo != Network_Wed) {
+    // 更新离线时间(计算下次唤醒的时间)
+    ConsumeTime = millis() - ConsumeTime;
+    Debug("耗时:" + String(ConsumeTime) + "ms\n");
+    TimeS += ConsumeTime / 1000;
+    if(TimeS >= 60) {
+      TimeS -= 60;
+      ++DelayTime;
+    }
+    unsigned int TimeML = TimeM;
+    TimeML += DelayTime;
+    while(TimeML >= 60) {
+      TimeML -= 60;
+      ++TimeH;
+      if(TimeH >= 24){
+        TimeH -= 24;
+      }
+    }
+    TimeM = TimeML;
+    EEPROM.put(PresentTimeHoursAddr, TimeH);
+    EEPROM.put(PresentTimeMinutesAddr, TimeM);
+    EEPROM.put(PresentTimeSecondAddr, TimeS);
+    EEPROM.commit();
+    DEV_Delay_ms(10);
+    Debug("唤醒时间：" + String(TimeH) + ":" + String(TimeM) + ":" + String(TimeS) + "\n");
+
+    // 休眠
     Debug("休眠时间：" + String(DelayTime) + "分\n");
-    DelayTime = DelayTime * 60 * 1000000;
-    Debug(String(DelayTime) + "us\n");
+    unsigned long long int SleepTime = ((unsigned long long int)DelayTime) * 60 * 1000000;
+    Debug(String(SleepTime) + "us\n");
     // 设置唤醒时间
-    esp_sleep_enable_timer_wakeup(DelayTime);
+    esp_sleep_enable_timer_wakeup(SleepTime);
     // 进入深度睡眠状态
     esp_deep_sleep_start();
   }

@@ -2,6 +2,7 @@
 
 WiFiUDP ntpUDP;
 NTPClient TimeNTPClient(ntpUDP, "ntp.aliyun.com", 60 * 60 * 8, 60 * 1000);
+unsigned char TimeH, TimeM, TimeS;
 
 void RequestPresentTime() {
   TimeNTPClient.begin();
@@ -19,14 +20,15 @@ PresentTimeInfo GetDelayTime() {
   EEPROM.get(EndTimeHoursAddr, EndHours);          // 获取结束 时
   EEPROM.get(EndTimeMinutesAddr, EndMinutes);      // 获取结束 分
 
+  // 获取当前时间
+  TimeH = TimeNTPClient.getHours();    // 获取时
+  TimeM = TimeNTPClient.getMinutes();  // 获取分
+  TimeS = TimeNTPClient.getSeconds();   // 获取秒
+
   // 开始时间 和 结束时间 相同 代表不停止工作
   if((StartHours == EndHours) && (StartMinutes == EndMinutes)){
     return DelayTime;
   }
-
-  // 获取当前时间
-  int TimeH = TimeNTPClient.getHours();    // 获取时
-  int TimeM = TimeNTPClient.getMinutes();  // 获取分
 
   // 转换为分钟数
   unsigned int StartTotal = StartHours * 60 + StartMinutes;// 开始时间（分为单位）

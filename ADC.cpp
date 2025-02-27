@@ -12,6 +12,10 @@ void ADC_Init(){
   // 使用eFuse校准ADC，并获取校准值
   adc_chars = (esp_adc_cal_characteristics_t *) malloc(sizeof(esp_adc_cal_characteristics_t));
   esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN, ADC_WIDTH, DEFAULT_VREF, adc_chars);
+  if (val_type == ESP_ADC_CAL_VAL_NOT_SUPPORTED) {
+    Debug("校准失败，请检查硬件!\n");
+    return;
+  }
 }
 
 float ReadADC(){

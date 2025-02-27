@@ -6,10 +6,8 @@
 #include "EepromString.h"
 #include "GUI_Paint.h"
 
-/*
-extern WiFiUDP ntpUDP;
-extern NTPClient TimeNTPClient;
-*/
+// 储存当前时间相关信息
+extern unsigned char TimeH, TimeM, TimeS;
 
 // 当前时间信息
 typedef struct PresentTimeInfo {

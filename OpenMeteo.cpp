@@ -5,7 +5,7 @@
 const char *OpenMeteoHtml = "https://api.open-meteo.com/v1/forecast?latitude=22.9882&longitude=114.3198&current=temperature_2m,weather_code&timezone=Asia%2FSingapore&forecast_days=1";
 
 // 3*5 数字 0~9
-unsigned char ShuPixData[10][2] = {
+const unsigned char ShuPixData[10][2] = {
   { 0xF6, 0xCE },  // 0
   { 0x48, 0x24 },  // 1
   { 0xE7, 0xCE },  // 2

@@ -34,10 +34,9 @@ SentenceInfo GetSentence(){
     ++API;
     EEPROM.put(SentenceAPIAddr, API);  // 存储
     EEPROM.commit();
-    return GetSentence(SentenceAPI(1 << (API - 1)), 10);
-  }else{
-    return GetSentence(SentenceAPI(Passage), 10);
+    Passage = 1 << (API - 1);
   }
+  return GetSentence(SentenceAPI(Passage), 10);
 }
 
 SentenceInfo GetSentence(SentenceAPI API, unsigned int AttemptCount){
@@ -90,7 +89,9 @@ SentenceInfo GetHitokoto(unsigned int AttemptCount){
     Debug(HInfo.from);
     Debug("\n");
   } else {
-    HInfo.Success = false;
+    HInfo.Success = true;// 虽然获取内容失败了，但还是现实固定内容
+    HInfo.hitokoto = "一言获取内容失败！";
+    HInfo.from = "开发者";
     Debug("HTTP Hitokoto failed\n");
   }
   http.end();
@@ -133,7 +134,9 @@ SentenceInfo GetONE(unsigned int AttemptCount){
     Debug(OInfo.from);
     Debug("\n");
   } else {
-    OInfo.Success = false;
+    OInfo.Success = true;// 虽然获取内容失败了，但还是现实固定内容
+    OInfo.hitokoto = "ONE获取内容失败！";
+    OInfo.from = "开发者";
     Debug("HTTP ONE failed\n");
   }
   http.end();
@@ -175,7 +178,9 @@ SentenceInfo GetGreenTangerine(unsigned int AttemptCount){
     Debug(QInfo.from);
     Debug("\n");
   } else {
-    QInfo.Success = false;
+    QInfo.Success = true;// 虽然获取内容失败了，但还是现实固定内容
+    QInfo.hitokoto = "青桔获取内容失败！";
+    QInfo.from = "开发者";
     Debug("HTTP GetGreenTangerine failed\n");
   }
   http.end();

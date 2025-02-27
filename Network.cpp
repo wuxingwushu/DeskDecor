@@ -3,6 +3,10 @@
 #include "DEV_Config.h"
 #include "Debug.h"
 #include <WiFi.h>
+#include <AsyncTCP.h>          // ESP32 依赖
+#include <ESPAsyncWebServer.h> // 主库
+#include <FS.h>         // 文件系统基础库
+#include <SPIFFS.h>
 
 // Wed服务器
 WebServer server(80);
@@ -21,7 +25,7 @@ NetworkCase ConnectWIFI() {
 
   // 获取所以WIFI名字
   String WifiNameS[WifiDateMaxSize];
-  Debug("以知WIFI\n");
+  Debug("以知WIFI:\n");
   for (unsigned int i = 0; i < WifiDateMaxSize; ++i) {
     WifiNameS[i] = readStringFromEEPROM(WifiNameAddr + (WiFiStrInterval * i));
     Debug(WifiNameS[i] + "\n");
@@ -31,8 +35,10 @@ NetworkCase ConnectWIFI() {
   int WiFiSize = WiFi.scanNetworks();        // 查询附近有什么WIFI
   String WifiName;                           // WIFI 名字（临时值）
   int RSSI = -10000;                         // 信号强度 （越大越强, 值为 0 是 RSSI 信号最强意思）
+  Debug("查询到的WIFI:\n");
   for (unsigned int i = 0; i < InldeWIFI; i++) {
     WifiName = WiFi.SSID(i);
+    Debug(WifiName + "\n");
     // 信号是否有所增加
     if (WiFi.RSSI(i) > RSSI) {
       // 查询是否有这个WIFI信息
@@ -106,6 +112,294 @@ String WebServerFun() {
   server.on("/set", handleSet);
   server.on("/set/config", HTTP_POST, handleSetConfig);
   server.on("/restart", handleRestart);
+
+#if 0
+  // 获取文件列表
+  server.on("/files", HTTP_GET, [](AsyncWebServerRequest *request){
+    String json = "[";
+    File root = SPIFFS.open("/", "r");
+    File file = root.openNextFile();
+    while(file){
+      if(json != "[") json += ',';
+      json += "{\"name\":\"" + String(file.name()) + "\",";
+      json += "\"size\":" + String(file.size()) + "}";
+      file.close();
+      file = root.openNextFile();
+    }
+    json += "]";
+    request->send(200, "application/json", json);
+  });
+
+  // 文件下载
+  server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request){
+    if(request->hasParam("file")){
+      String filename = "/" + request->getParam("file")->value();
+      if(SPIFFS.exists(filename)){
+        request->send(SPIFFS, filename, "application/octet-stream");
+      }
+      else{
+        request->send(404, "text/plain", "File not found");
+      }
+    }
+    else{
+      request->send(400, "text/plain", "Bad request");
+    }
+  });
+
+  // 文件删除
+  server.on("/delete", HTTP_DELETE, [](AsyncWebServerRequest *request){
+    if(request->hasParam("file")){
+      String filename = "/" + request->getParam("file")->value();
+      if(SPIFFS.remove(filename)){
+        request->send(200, "text/plain", "File deleted");
+      }
+      else{
+        request->send(500, "text/plain", "Delete failed");
+      }
+    }
+    else{
+      request->send(400, "text/plain", "Bad request");
+    }
+  });
+
+  // 获取存储信息
+  server.on("/storage", HTTP_GET, [](AsyncWebServerRequest *request){
+    size_t total = SPIFFS.totalBytes() * 0.75;
+    size_t used = SPIFFS.usedBytes();
+    String json = "{";
+    json += "\"total\":" + String(total) + ",";
+    json += "\"used\":" + String(used) + ",";
+    json += "\"free\":" + String(total - used);
+    json += "}";
+    request->send(200, "application/json", json);
+  });
+
+  // 文件上传处理
+  server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request){
+    request->send(200);
+  }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final){
+    if(!index){
+      filename = "/" + filename;
+      request->_tempFile = SPIFFS.open(filename, "w");
+    }
+    if(request->_tempFile){
+      request->_tempFile.write(data, len);
+    }
+    if(final){
+      if(request->_tempFile){
+        request->_tempFile.close();
+      }
+    }
+  });
+
+  // 提供静态页面
+  server.on("/ttf", HTTP_GET, [](AsyncWebServerRequest *request){
+    const char* ttfhtml = R"rawliteral(
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>ESP32 文件管理器</title>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+                margin: 20px;
+                background-color: #0d1117;
+                color: #c9d1d9;
+                line-height: 1.5;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+            }
+            .section {
+                margin-bottom: 20px;
+                padding: 20px;
+                background-color: #161b22;
+                border: 1px solid #30363d;
+                border-radius: 6px;
+                box-shadow: 0 1px 0 rgba(48,54,61,0.5);
+            }
+            h1, h2 {
+                color: #e6edf3;
+                border-bottom: 1px solid #30363d;
+                padding-bottom: 0.3em;
+                margin-top: 0;
+            }
+            h1 { font-size: 24px; }
+            h2 { font-size: 20px; }
+
+            /* 自定义文件上传按钮 */
+            .custom-file-upload {
+                display: inline-block;
+                padding: 5px 16px;
+                background-color: #21262d;
+                border: 1px solid #363b42;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: all 0.1s cubic-bezier(0.3,0,0.5,1);
+            }
+            .custom-file-upload:hover {
+                background-color: #2d333b;
+                border-color: #8b949e;
+            }
+            input[type="file"] {
+                display: none;
+            }
+
+            /* 统一按钮样式 */
+            button {
+                background-color: #21262d;
+                border: 1px solid #363b42;
+                color: #c9d1d9;
+                padding: 5px 16px;
+                border-radius: 6px;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.1s cubic-bezier(0.3,0,0.5,1);
+            }
+            button:hover {
+                background-color: #2d333b;
+                border-color: #8b949e;
+            }
+            button:active {
+                background-color: #3b424b;
+            }
+
+            /* 文件列表样式 */
+            ul {
+                padding-left: 0;
+                margin: 15px 0;
+                border: 1px solid #30363d;
+                border-radius: 6px;
+            }
+            li {
+                padding: 8px 16px;
+                display: flex;
+                align-items: center;
+                border-bottom: 1px solid #30363d;
+            }
+            li:last-child {
+                border-bottom: none;
+            }
+            li::before {
+                content: "📄";
+                margin-right: 12px;
+                filter: hue-rotate(180deg);
+            }
+
+            /* 存储信息样式 */
+            #storage {
+                padding: 12px;
+                background-color: #0d1117;
+                border: 1px solid #30363d;
+                border-radius: 6px;
+                color: #8b949e;
+                font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>ESP32 文件管理器</h1>
+            
+            <div class="section">
+                <h2>存储信息</h2>
+                <div id="storage">正在加载...</div>
+            </div>
+
+            <div class="section">
+                <h2>文件上传</h2>
+                <label class="custom-file-upload">
+                    <span>选择文件</span>
+                    <input type="file" id="fileInput">
+                </label>
+                <button onclick="uploadFile()">开始上传</button>
+            </div>
+
+            <div class="section">
+                <h2>文件列表</h2>
+                <button onclick="refreshFiles()" style="margin-bottom: 15px;">🔄 刷新列表</button>
+                <div id="fileList"></div>
+            </div>
+        </div>
+
+        <script>
+            // 存储信息更新
+            function updateStorage() {
+                fetch('/storage')
+                    .then(response => response.json())
+                    .then(data => {
+                        const total = (data.total / 1024).toFixed(2);
+                        const used = (data.used / 1024).toFixed(2);
+                        const free = (data.free / 1024).toFixed(2);
+                        document.getElementById('storage').innerHTML = 
+                            `总空间: ${total} KB\n已使用: ${used} KB\n剩余空间: ${free} KB`.replace(/\n/g, '<br>');
+                    });
+            }
+
+            // 文件列表刷新
+            function refreshFiles() {
+                fetch('/files')
+                    .then(response => response.json())
+                    .then(files => {
+                        const list = files.map(file => `
+                            <li>
+                                <span style="flex-grow:1">${file.name}</span>
+                                <span style="color:#8b949e; margin:0 12px;">${file.size} B</span>
+                                <button onclick="downloadFile('${file.name}')">⬇️ 下载</button>
+                                <button onclick="deleteFile('${file.name}')">🗑️ 删除</button>
+                            </li>
+                        `).join('');
+                        document.getElementById('fileList').innerHTML = `<ul>${list}</ul>`;
+                    });
+            }
+
+            // 文件上传逻辑
+            function uploadFile() {
+                const fileInput = document.getElementById('fileInput');
+                if (!fileInput.files[0]) return alert('请先选择文件');
+                
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        fileInput.value = '';
+                        refreshFiles();
+                        updateStorage();
+                        alert('✅ 上传成功');
+                    }
+                });
+            }
+
+            // 文件删除确认
+            function deleteFile(filename) {
+                if (confirm(`确定要永久删除 "${filename}" 吗？`)) {
+                    fetch(`/delete?file=${filename}`, { method: 'DELETE' })
+                        .then(response => {
+                            if (response.ok) {
+                                refreshFiles();
+                                updateStorage();
+                                alert('🗑️ 文件已删除');
+                            }
+                        });
+                }
+            }
+
+            // 初始化加载
+            updateStorage();
+            refreshFiles();
+        </script>
+    </body>
+    </html>
+    )rawliteral";
+    request->send(200, "text/html", ttfhtml);
+  });
+#endif
 
   // 启动Web服务器
   server.begin();
@@ -198,7 +492,7 @@ void handleSet() {
   <form action="/set/config" method="POST" id="passwordForm" class="form-container">
     <p>更新時間(分钟):</p>
     <input type="number" id="TimeVal" name="TimeVal" class="form-input" value=")rawliteral";
-  const String SethtmlForm2 = R"rawliteral(">
+  const String SethtmlForm2 = R"rawliteral(" min="0" max="1440">
 
     <p>（开始时间 等于 结束时间 代表不停止工作）</p>
     <p>开始时间:</p>
@@ -295,7 +589,7 @@ void handleSet() {
 </body>
 </html>
   )rawliteral";
-  int shu;
+  unsigned short shu;
   EEPROM.get(SleepValueAddr, shu);
   unsigned char StartHours, StartMinutes, EndHours, EndMinutes, APIPassage;
   EEPROM.get(StartTimeHoursAddr, StartHours);
@@ -639,66 +933,135 @@ const char *RootHtml = R"rawliteral(
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-<meta charset="UTF-8">
-<title>主页</title>
-<style>
-    /* 设置容器为弹性布局 */
-    .container {
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        height: 100vh;
-        padding: 0px;
-        background-color: #24292e;
-    }
-
-    /* 样式化SVG图标 */
-    .icon {
-        width: 30vw;
-        height: 30vh;
-        fill: currentColor; /* 使用当前颜色以支持主题变化 */
-        transition: transform 0.2s ease-in-out;
-    }
-
-    /* 悬停时放大效果 */
-    .icon:hover {
-        transform: scale(1.1);
-    }
-
-    /* 默认浅色模式 */
-    body {
-        color: #000;
-        background-color: #fff;
-    }
-
-    /* 深色模式 */
-    @media (prefers-color-scheme: dark) {
-        body {
-            color: #fff;
-            background-color: #000;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>设备控制中心</title>
+    <style>
+        /* 新增 确保根元素和body的背景色统一 */
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: #24292e; /* 与容器颜色一致 */
+            overflow-x: hidden; /* 防止横向滚动 */
+            overflow-y: hidden; /* 防止横向滚动 */
         }
+
+        :root {
+            --icon-size: 30vmin;
+            --gap-size: 5vmin;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--gap-size);
+            justify-content: center;
+            align-content: center; /* 关键修改 */
+            align-items: center; /* 改为align-items */
+            min-height: 100dvh;
+            padding: 5vmin;
+            width: 100%; /* 添加宽度限制 */
+            height: 100vh; /* 新增高度定义 */
+            box-sizing: border-box; /* 包含padding */
+        }
+
+        .icon-link {
+            flex: 0 0 auto; /* 防止flex伸缩 */
+            width: calc(33.333% - var(--gap-size)*2/3); /* 三列精确计算 */
+            max-width: 300px; /* 最大尺寸限制 */
+            aspect-ratio: 1/1; /* 保持方形 */
+            padding: 12px;
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
         .icon {
-            fill: #fff; /* 深色模式下使用白色填充 */
+            width: 100%;
+            height: 100%;
+            aspect-ratio: 1/1;
         }
-    }
-</style>
+
+        @media (orientation: portrait) {
+            .icon-link {
+                width: calc(50% - var(--gap-size)/2); /* 两列精确计算 */
+            }
+        }
+
+        @media (min-width: 768px) {
+            .icon-link {
+                width: calc(25% - var(--gap-size)*3/4); /* 四列精确计算 */
+            }
+        }
+
+        @media (orientation: landscape) {
+            .container {
+                flex-direction: row;
+                padding: 5vmax;
+            }
+        }
+
+        .icon-link:hover {
+            transform: scale(1.08);
+            /* 移除 rotate 保持纯缩放效果 */
+        }
+        .icon-link:active {
+            transform: scale(0.95);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .icon {
+                filter: invert(1) hue-rotate(180deg) brightness(1.2);
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <!-- WiFi图标 -->
-        <a href="/wifi" target="_self">
-            <svg t="1737446876153" class="icon" viewBox="0 0 1122 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2433" width="200" height="200"><path d="M561.152 910.336c-7.68 0-25.088-13.824-53.248-41.984-27.648-28.16-41.472-45.568-41.472-53.248 0-12.288 11.776-22.528 35.84-30.72s43.52-12.8 59.392-12.8c15.872 0 35.328 4.096 59.392 12.8s35.84 18.432 35.84 30.72c0 7.68-13.824 25.6-41.472 53.248-29.184 28.16-46.592 41.984-54.272 41.984z" fill="#1296DB" p-id="2434"></path><path d="M715.264 755.712c-0.512 0-8.192-4.608-23.04-14.336-14.336-9.728-33.792-18.944-57.856-28.672-24.064-9.728-48.64-14.336-73.216-14.336-24.576 0-49.152 4.608-73.216 14.336-24.064 9.728-43.52 18.944-57.856 28.672-14.336 9.728-22.016 14.336-23.04 14.336-6.656 0-24.576-14.336-53.248-43.008s-43.008-46.08-43.008-53.248c0-5.12 2.048-9.216 5.632-13.312 29.696-29.184 67.072-52.224 112.128-69.12s89.088-25.088 133.12-25.088c44.032 0 88.064 8.192 133.12 25.088 45.056 16.896 82.432 39.936 112.128 69.12 3.584 3.584 5.632 8.192 5.632 13.312 0 6.656-14.336 24.576-43.008 53.248-29.696 28.672-47.104 43.008-54.272 43.008z" fill="#19A3E0" p-id="2435"></path><path d="M871.424 600.064c-4.096 0-8.704-1.536-13.312-4.608-51.712-39.936-99.84-69.632-143.872-88.064s-95.232-28.16-153.088-28.16c-32.256 0-65.024 4.096-97.28 12.8S402.944 510.464 378.88 522.24c-24.064 11.776-45.568 23.552-65.024 35.328s-34.304 22.016-45.056 30.208c-11.264 8.192-16.896 12.8-17.92 12.8-6.656 0-24.064-14.336-52.736-43.008s-43.008-46.08-43.008-53.248c0-4.608 2.048-8.704 5.632-12.8 50.176-50.176 111.104-89.088 182.784-117.248 71.68-27.648 143.872-41.472 217.088-41.472s145.408 13.824 217.088 41.472c71.68 27.648 132.608 67.072 182.784 117.248 3.584 3.584 5.632 8.192 5.632 12.8 0 6.656-14.336 24.576-43.008 53.248s-45.056 42.496-51.712 42.496z" fill="#48B5E5" p-id="2436"></path><path d="M1026.048 445.44c-4.096 0-8.192-1.536-12.8-5.12-68.096-59.904-138.752-104.96-212.48-135.168-73.216-30.208-153.6-45.568-240.128-45.568-87.04 0-166.912 15.36-240.128 45.568S176.64 380.416 108.544 440.32c-4.096 3.584-8.192 5.12-12.8 5.12-6.656 0-24.064-14.336-52.736-43.008S0 356.352 0 349.184c0-5.12 2.048-9.216 5.632-13.312C76.8 265.216 161.792 210.432 260.096 171.52s198.656-58.368 301.056-58.368 202.752 19.456 301.056 58.368 183.296 93.696 254.464 164.352c3.584 3.584 5.632 8.192 5.632 13.312 0 6.656-14.336 24.576-43.008 53.248-28.672 28.672-46.592 43.008-53.248 43.008z" fill="#80D8FF" p-id="2437"></path></svg>
+        <a href="/wifi" class="icon-link">
+            <svg t="1737446876153" class="icon" viewBox="0 0 1122 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
+                p-id="2433" width="200" height="200">
+                <path
+                    d="M561.152 910.336c-7.68 0-25.088-13.824-53.248-41.984-27.648-28.16-41.472-45.568-41.472-53.248 0-12.288 11.776-22.528 35.84-30.72s43.52-12.8 59.392-12.8c15.872 0 35.328 4.096 59.392 12.8s35.84 18.432 35.84 30.72c0 7.68-13.824 25.6-41.472 53.248-29.184 28.16-46.592 41.984-54.272 41.984z"
+                    fill="#1296DB" p-id="2434"></path>
+                <path
+                    d="M715.264 755.712c-0.512 0-8.192-4.608-23.04-14.336-14.336-9.728-33.792-18.944-57.856-28.672-24.064-9.728-48.64-14.336-73.216-14.336-24.576 0-49.152 4.608-73.216 14.336-24.064 9.728-43.52 18.944-57.856 28.672-14.336 9.728-22.016 14.336-23.04 14.336-6.656 0-24.576-14.336-53.248-43.008s-43.008-46.08-43.008-53.248c0-5.12 2.048-9.216 5.632-13.312 29.696-29.184 67.072-52.224 112.128-69.12s89.088-25.088 133.12-25.088c44.032 0 88.064 8.192 133.12 25.088 45.056 16.896 82.432 39.936 112.128 69.12 3.584 3.584 5.632 8.192 5.632 13.312 0 6.656-14.336 24.576-43.008 53.248-29.696 28.672-47.104 43.008-54.272 43.008z"
+                    fill="#19A3E0" p-id="2435"></path>
+                <path
+                    d="M871.424 600.064c-4.096 0-8.704-1.536-13.312-4.608-51.712-39.936-99.84-69.632-143.872-88.064s-95.232-28.16-153.088-28.16c-32.256 0-65.024 4.096-97.28 12.8S402.944 510.464 378.88 522.24c-24.064 11.776-45.568 23.552-65.024 35.328s-34.304 22.016-45.056 30.208c-11.264 8.192-16.896 12.8-17.92 12.8-6.656 0-24.064-14.336-52.736-43.008s-43.008-46.08-43.008-53.248c0-4.608 2.048-8.704 5.632-12.8 50.176-50.176 111.104-89.088 182.784-117.248 71.68-27.648 143.872-41.472 217.088-41.472s145.408 13.824 217.088 41.472c71.68 27.648 132.608 67.072 182.784 117.248 3.584 3.584 5.632 8.192 5.632 12.8 0 6.656-14.336 24.576-43.008 53.248s-45.056 42.496-51.712 42.496z"
+                    fill="#48B5E5" p-id="2436"></path>
+                <path
+                    d="M1026.048 445.44c-4.096 0-8.192-1.536-12.8-5.12-68.096-59.904-138.752-104.96-212.48-135.168-73.216-30.208-153.6-45.568-240.128-45.568-87.04 0-166.912 15.36-240.128 45.568S176.64 380.416 108.544 440.32c-4.096 3.584-8.192 5.12-12.8 5.12-6.656 0-24.064-14.336-52.736-43.008S0 356.352 0 349.184c0-5.12 2.048-9.216 5.632-13.312C76.8 265.216 161.792 210.432 260.096 171.52s198.656-58.368 301.056-58.368 202.752 19.456 301.056 58.368 183.296 93.696 254.464 164.352c3.584 3.584 5.632 8.192 5.632 13.312 0 6.656-14.336 24.576-43.008 53.248-28.672 28.672-46.592 43.008-53.248 43.008z"
+                    fill="#80D8FF" p-id="2437"></path>
+            </svg>
         </a>
 
         <!-- 设置图标 -->
-        <a href="/set" target="_self">
-<svg t="1737633885234" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7193" width="200" height="200"><path d="M951.68 428.8a23.808 23.808 0 0 0-0.64-4.224v-0.768l-0.448-2.24c-7.04-34.56-30.016-56.896-58.496-56.896h-4.672c-48.64 0-88-39.552-88-88 0-11.2 5.12-27.072 7.36-32.64 13.824-32.256-0.896-68.928-35.008-87.68l-107.264-60.672-1.984-0.64c-8.064-2.624-17.28-5.76-27.712-5.76-19.392 0-41.216 8.96-54.72 22.528-16.896 16.64-51.2 41.6-71.616 41.6-20.288 0-54.656-24.832-71.616-41.6a78.528 78.528 0 0 0-54.656-22.528c-10.688 0-19.712 3.008-27.712 5.76l-1.792 0.64-112.512 60.928-0.64 0.384c-27.328 17.088-38.4 56.32-24.576 87.424l0.192 0.384 0.256 0.384c2.176 4.928 8.96 21.504 8.96 36.032 0 48.64-39.616 88-88 88h-4.672c-29.824 0-52.096 21.952-58.496 57.28l-0.448 1.984v0.704c0 1.024-0.384 2.432-0.64 4.224-2.56 15.104-8.512 50.688-8.512 79.808 0 29.056 5.888 64.64 8.448 79.808a24 24 0 0 0 0.704 4.16v0.832l0.448 2.176c7.04 34.56 29.952 56.96 58.496 56.96h2.368c48.64 0 88 39.552 88 87.936 0 11.2-5.184 27.136-7.36 32.704-13.312 30.272-0.704 69.184 28.672 88.832l0.832 0.384 105.984 59.008 1.984 0.64c8 2.624 17.088 5.76 27.52 5.76 22.208 0 42.24-8.512 54.656-22.528 1.28-0.896 2.432-2.112 3.84-3.264 12.8-11.2 47.168-40.832 69.888-40.832 16.896 0 45.184 17.728 73.728 46.208 14.4 14.208 34.24 22.464 54.656 22.464 13.824 0 24-3.776 35.584-9.472l0.448-0.192 108.672-60.16 0.384-0.32c27.328-17.152 38.4-56.32 24.512-87.424l-0.192-0.384-0.192-0.384c-0.192-0.128-8.704-17.856-7.104-33.728l0.192-1.024v-0.96c0-48.64 39.616-88 88-88h4.992c29.824 0 52.096-22.016 58.496-57.344l0.448-1.92v-0.768l0.64-3.584c2.624-14.72 8.64-49.024 8.64-80.384 0.192-28.992-5.76-64.512-8.32-79.616z m-440 222.4a139.2 139.2 0 1 1 0-278.4 139.2 139.2 0 0 1 0 278.4z" fill="#00BAAD" p-id="7194"></path></svg>        </a>
+        <a href="/set" class="icon-link">
+            <svg t="1737633885234" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
+                p-id="7193" width="200" height="200">
+                <path
+                    d="M951.68 428.8a23.808 23.808 0 0 0-0.64-4.224v-0.768l-0.448-2.24c-7.04-34.56-30.016-56.896-58.496-56.896h-4.672c-48.64 0-88-39.552-88-88 0-11.2 5.12-27.072 7.36-32.64 13.824-32.256-0.896-68.928-35.008-87.68l-107.264-60.672-1.984-0.64c-8.064-2.624-17.28-5.76-27.712-5.76-19.392 0-41.216 8.96-54.72 22.528-16.896 16.64-51.2 41.6-71.616 41.6-20.288 0-54.656-24.832-71.616-41.6a78.528 78.528 0 0 0-54.656-22.528c-10.688 0-19.712 3.008-27.712 5.76l-1.792 0.64-112.512 60.928-0.64 0.384c-27.328 17.088-38.4 56.32-24.576 87.424l0.192 0.384 0.256 0.384c2.176 4.928 8.96 21.504 8.96 36.032 0 48.64-39.616 88-88 88h-4.672c-29.824 0-52.096 21.952-58.496 57.28l-0.448 1.984v0.704c0 1.024-0.384 2.432-0.64 4.224-2.56 15.104-8.512 50.688-8.512 79.808 0 29.056 5.888 64.64 8.448 79.808a24 24 0 0 0 0.704 4.16v0.832l0.448 2.176c7.04 34.56 29.952 56.96 58.496 56.96h2.368c48.64 0 88 39.552 88 87.936 0 11.2-5.184 27.136-7.36 32.704-13.312 30.272-0.704 69.184 28.672 88.832l0.832 0.384 105.984 59.008 1.984 0.64c8 2.624 17.088 5.76 27.52 5.76 22.208 0 42.24-8.512 54.656-22.528 1.28-0.896 2.432-2.112 3.84-3.264 12.8-11.2 47.168-40.832 69.888-40.832 16.896 0 45.184 17.728 73.728 46.208 14.4 14.208 34.24 22.464 54.656 22.464 13.824 0 24-3.776 35.584-9.472l0.448-0.192 108.672-60.16 0.384-0.32c27.328-17.152 38.4-56.32 24.512-87.424l-0.192-0.384-0.192-0.384c-0.192-0.128-8.704-17.856-7.104-33.728l0.192-1.024v-0.96c0-48.64 39.616-88 88-88h4.992c29.824 0 52.096-22.016 58.496-57.344l0.448-1.92v-0.768l0.64-3.584c2.624-14.72 8.64-49.024 8.64-80.384 0.192-28.992-5.76-64.512-8.32-79.616z m-440 222.4a139.2 139.2 0 1 1 0-278.4 139.2 139.2 0 0 1 0 278.4z"
+                    fill="#00BAAD" p-id="7194"></path>
+            </svg> </a>
+
+        <!-- 字体图标 -->
+        <a href="/ttf" class="icon-link">
+            <svg t="1740643589326" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
+                p-id="3754" width="200" height="200">
+                <path
+                    d="M920 416H616c-4.4 0-8 3.6-8 8v112c0 4.4 3.6 8 8 8h48c4.4 0 8-3.6 8-8v-56h60v320h-46c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h164c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8h-46V480h60v56c0 4.4 3.6 8 8 8h48c4.4 0 8-3.6 8-8V424c0-4.4-3.6-8-8-8zM656 296V168c0-4.4-3.6-8-8-8H104c-4.4 0-8 3.6-8 8v128c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-64h168v560h-92c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h264c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8h-92V232h168v64c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8z"
+                    fill="#1296DB" p-id="3755"></path>
+            </svg></a>
 
         <!-- 重启图标 -->
-        <a href="/restart" target="_self">
-            <svg t="1737633375421" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1499" width="200" height="200"><path d="M512 0C229.239467 0 0 229.239467 0 512c0 282.760533 229.239467 512 512 512 282.760533 0 512-229.239467 512-512C1024 229.239467 794.760533 0 512 0z m0 786.005333c-141.380267 0-256-114.619733-256-256 0-141.380267 114.619733-256 256-256V200.874667l146.295467 109.704533L512 420.317867v-73.130667a182.869333 182.869333 0 1 0 182.869333 182.818133c0-43.434667 73.130667-44.970667 73.130667 0 0 141.380267-114.619733 256-256 256z" fill="#3498DA" p-id="1500"></path></svg>        </a>
+        <a href="/restart" class="icon-link">
+            <svg t="1737633375421" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
+                p-id="1499" width="200" height="200">
+                <path
+                    d="M512 0C229.239467 0 0 229.239467 0 512c0 282.760533 229.239467 512 512 512 282.760533 0 512-229.239467 512-512C1024 229.239467 794.760533 0 512 0z m0 786.005333c-141.380267 0-256-114.619733-256-256 0-141.380267 114.619733-256 256-256V200.874667l146.295467 109.704533L512 420.317867v-73.130667a182.869333 182.869333 0 1 0 182.869333 182.818133c0-43.434667 73.130667-44.970667 73.130667 0 0 141.380267-114.619733 256-256 256z"
+                    fill="#3498DA" p-id="1500"></path>
+            </svg> </a>
     </div>
-    
 </body>
 </html>
 )rawliteral";
