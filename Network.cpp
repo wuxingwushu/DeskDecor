@@ -3,20 +3,20 @@
 #include "DEV_Config.h"
 #include "Debug.h"
 #include <WiFi.h>
-#include <AsyncTCP.h>          // ESP32 依赖
-#include <ESPAsyncWebServer.h> // 主库
-#include <FS.h>         // 文件系统基础库
+#include <AsyncTCP.h> // ESP32 依赖
 #include <SPIFFS.h>
 
 // Wed服务器
-WebServer server(80);
+AsyncWebServer server(80);
 
-NetworkCase ConnectWIFI() {
+NetworkCase ConnectWIFI()
+{
   // 启用WiFi模块
   WiFi.mode(WIFI_STA);
   // 初始化 12引脚口
   pinMode(12, INPUT_PULLUP);
-  if (digitalRead(12) == 0) {
+  if (digitalRead(12) == 0)
+  {
     Debug("Wed服务\n");
     return Network_Wed;
   }
@@ -26,24 +26,29 @@ NetworkCase ConnectWIFI() {
   // 获取所以WIFI名字
   String WifiNameS[WifiDateMaxSize];
   Debug("以知WIFI:\n");
-  for (unsigned int i = 0; i < WifiDateMaxSize; ++i) {
+  for (unsigned int i = 0; i < WifiDateMaxSize; ++i)
+  {
     WifiNameS[i] = readStringFromEEPROM(WifiNameAddr + (WiFiStrInterval * i));
     Debug(WifiNameS[i] + "\n");
   }
 
-  unsigned int InldeWIFI = WifiDateMaxSize;  // 当前选择WIFI 序号
-  int WiFiSize = WiFi.scanNetworks();        // 查询附近有什么WIFI
-  String WifiName;                           // WIFI 名字（临时值）
-  int RSSI = -10000;                         // 信号强度 （越大越强, 值为 0 是 RSSI 信号最强意思）
+  unsigned int InldeWIFI = WifiDateMaxSize; // 当前选择WIFI 序号
+  int WiFiSize = WiFi.scanNetworks();       // 查询附近有什么WIFI
+  String WifiName;                          // WIFI 名字（临时值）
+  int RSSI = -10000;                        // 信号强度 （越大越强, 值为 0 是 RSSI 信号最强意思）
   Debug("查询到的WIFI:\n");
-  for (unsigned int i = 0; i < InldeWIFI; i++) {
+  for (unsigned int i = 0; i < InldeWIFI; i++)
+  {
     WifiName = WiFi.SSID(i);
     Debug(WifiName + "\n");
     // 信号是否有所增加
-    if (WiFi.RSSI(i) > RSSI) {
+    if (WiFi.RSSI(i) > RSSI)
+    {
       // 查询是否有这个WIFI信息
-      for (unsigned int k = 0; k < WifiDateMaxSize; ++k) {
-        if (WifiNameS[k] == WifiName) {
+      for (unsigned int k = 0; k < WifiDateMaxSize; ++k)
+      {
+        if (WifiNameS[k] == WifiName)
+        {
           // 选择这个WIFI
           InldeWIFI = k;
           RSSI = WiFi.RSSI(i);
@@ -52,23 +57,26 @@ NetworkCase ConnectWIFI() {
     }
   }
 
-  int Count = 0;  // 尝试链接次数
+  int Count = 0; // 尝试链接次数
 
-  if (InldeWIFI == WifiDateMaxSize) {  // 当没有查到对应WIFI时只判断是否进入Wed模式
+  if (InldeWIFI == WifiDateMaxSize)
+  { // 当没有查到对应WIFI时只判断是否进入Wed模式
     Debug("不存在网络\n");
-    while (true) {
-      if (digitalRead(12) == 0) {
+    while (true)
+    {
+      if (digitalRead(12) == 0)
+      {
         Debug("Wed服务\n");
         return Network_Wed;
       }
       ++Count;
-      if (Count > 20) {  // 几次后没法连接判定为没有网络
+      if (Count > 20)
+      { // 几次后没法连接判定为没有网络
         return Network_Not;
       }
       DEV_Delay_ms(100);
     }
   }
-
 
   /************************/
 
@@ -78,15 +86,18 @@ NetworkCase ConnectWIFI() {
   Debug("链接：" + ssidConfig + "," + passwordConfig + "\n");
 
   // 连接WiFi
-  WiFi.begin(ssidConfig, passwordConfig);
+  WiFi.begin(ssidConfig.c_str(), passwordConfig.c_str());
 
-  while (WiFi.status() != WL_CONNECTED) {
-    if (digitalRead(12) == 0) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    if (digitalRead(12) == 0)
+    {
       Debug("Wed服务\n");
       return Network_Wed;
     }
     ++Count;
-    if (Count > 50) {  // 几次后没法连接判定为没有网络
+    if (Count > 50)
+    { // 几次后没法连接判定为没有网络
       Debug("\n连接失败\n");
       return Network_Not;
     }
@@ -97,7 +108,8 @@ NetworkCase ConnectWIFI() {
   return Network_Ok;
 }
 
-String WebServerFun() {
+String WebServerFun()
+{
   // 确保首先断开了STA模式下的任何连接
   WiFi.disconnect(true);
 
@@ -106,299 +118,29 @@ String WebServerFun() {
   WiFi.softAP("一言墨水屏");
 
   // 定义根路径的回调函数
-  server.on("/", handleRoot);
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(200, "text/html", RootHtml); });
   server.on("/wifi", handleWifi);
-  server.on("/wifi/config", HTTP_POST, handleWifiConfig);  // 提交Wi-Fi信息进行连接
+  server.on("/wifi/config", HTTP_POST, handleWifiConfig); // 提交Wi-Fi信息进行连接
   server.on("/set", handleSet);
   server.on("/set/config", HTTP_POST, handleSetConfig);
   server.on("/restart", handleRestart);
 
-#if 0
+#if 1
   // 获取文件列表
-  server.on("/files", HTTP_GET, [](AsyncWebServerRequest *request){
-    String json = "[";
-    File root = SPIFFS.open("/", "r");
-    File file = root.openNextFile();
-    while(file){
-      if(json != "[") json += ',';
-      json += "{\"name\":\"" + String(file.name()) + "\",";
-      json += "\"size\":" + String(file.size()) + "}";
-      file.close();
-      file = root.openNextFile();
-    }
-    json += "]";
-    request->send(200, "application/json", json);
-  });
-
+  server.on("/files", HTTP_GET, GetFileList);
   // 文件下载
-  server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request){
-    if(request->hasParam("file")){
-      String filename = "/" + request->getParam("file")->value();
-      if(SPIFFS.exists(filename)){
-        request->send(SPIFFS, filename, "application/octet-stream");
-      }
-      else{
-        request->send(404, "text/plain", "File not found");
-      }
-    }
-    else{
-      request->send(400, "text/plain", "Bad request");
-    }
-  });
-
+  server.on("/download", HTTP_GET, FileDownload);
   // 文件删除
-  server.on("/delete", HTTP_DELETE, [](AsyncWebServerRequest *request){
-    if(request->hasParam("file")){
-      String filename = "/" + request->getParam("file")->value();
-      if(SPIFFS.remove(filename)){
-        request->send(200, "text/plain", "File deleted");
-      }
-      else{
-        request->send(500, "text/plain", "Delete failed");
-      }
-    }
-    else{
-      request->send(400, "text/plain", "Bad request");
-    }
-  });
-
+  server.on("/delete", HTTP_DELETE, FileDeletion);
   // 获取存储信息
-  server.on("/storage", HTTP_GET, [](AsyncWebServerRequest *request){
-    size_t total = SPIFFS.totalBytes() * 0.75;
-    size_t used = SPIFFS.usedBytes();
-    String json = "{";
-    json += "\"total\":" + String(total) + ",";
-    json += "\"used\":" + String(used) + ",";
-    json += "\"free\":" + String(total - used);
-    json += "}";
-    request->send(200, "application/json", json);
-  });
-
+  server.on("/storage", HTTP_GET, RetrieveStorageInformation);
   // 文件上传处理
-  server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request){
-    request->send(200);
-  }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final){
-    if(!index){
-      filename = "/" + filename;
-      request->_tempFile = SPIFFS.open(filename, "w");
-    }
-    if(request->_tempFile){
-      request->_tempFile.write(data, len);
-    }
-    if(final){
-      if(request->_tempFile){
-        request->_tempFile.close();
-      }
-    }
-  });
-
+  server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request)
+            { request->send(200); }, FileUploadProcessing);
   // 提供静态页面
-  server.on("/ttf", HTTP_GET, [](AsyncWebServerRequest *request){
-    const char* ttfhtml = R"rawliteral(
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>ESP32 文件管理器</title>
-        <style>
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-                margin: 20px;
-                background-color: #0d1117;
-                color: #c9d1d9;
-                line-height: 1.5;
-            }
-            .container {
-                max-width: 800px;
-                margin: 0 auto;
-            }
-            .section {
-                margin-bottom: 20px;
-                padding: 20px;
-                background-color: #161b22;
-                border: 1px solid #30363d;
-                border-radius: 6px;
-                box-shadow: 0 1px 0 rgba(48,54,61,0.5);
-            }
-            h1, h2 {
-                color: #e6edf3;
-                border-bottom: 1px solid #30363d;
-                padding-bottom: 0.3em;
-                margin-top: 0;
-            }
-            h1 { font-size: 24px; }
-            h2 { font-size: 20px; }
-
-            /* 自定义文件上传按钮 */
-            .custom-file-upload {
-                display: inline-block;
-                padding: 5px 16px;
-                background-color: #21262d;
-                border: 1px solid #363b42;
-                border-radius: 6px;
-                cursor: pointer;
-                transition: all 0.1s cubic-bezier(0.3,0,0.5,1);
-            }
-            .custom-file-upload:hover {
-                background-color: #2d333b;
-                border-color: #8b949e;
-            }
-            input[type="file"] {
-                display: none;
-            }
-
-            /* 统一按钮样式 */
-            button {
-                background-color: #21262d;
-                border: 1px solid #363b42;
-                color: #c9d1d9;
-                padding: 5px 16px;
-                border-radius: 6px;
-                font-size: 14px;
-                cursor: pointer;
-                transition: all 0.1s cubic-bezier(0.3,0,0.5,1);
-            }
-            button:hover {
-                background-color: #2d333b;
-                border-color: #8b949e;
-            }
-            button:active {
-                background-color: #3b424b;
-            }
-
-            /* 文件列表样式 */
-            ul {
-                padding-left: 0;
-                margin: 15px 0;
-                border: 1px solid #30363d;
-                border-radius: 6px;
-            }
-            li {
-                padding: 8px 16px;
-                display: flex;
-                align-items: center;
-                border-bottom: 1px solid #30363d;
-            }
-            li:last-child {
-                border-bottom: none;
-            }
-            li::before {
-                content: "📄";
-                margin-right: 12px;
-                filter: hue-rotate(180deg);
-            }
-
-            /* 存储信息样式 */
-            #storage {
-                padding: 12px;
-                background-color: #0d1117;
-                border: 1px solid #30363d;
-                border-radius: 6px;
-                color: #8b949e;
-                font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>ESP32 文件管理器</h1>
-            
-            <div class="section">
-                <h2>存储信息</h2>
-                <div id="storage">正在加载...</div>
-            </div>
-
-            <div class="section">
-                <h2>文件上传</h2>
-                <label class="custom-file-upload">
-                    <span>选择文件</span>
-                    <input type="file" id="fileInput">
-                </label>
-                <button onclick="uploadFile()">开始上传</button>
-            </div>
-
-            <div class="section">
-                <h2>文件列表</h2>
-                <button onclick="refreshFiles()" style="margin-bottom: 15px;">🔄 刷新列表</button>
-                <div id="fileList"></div>
-            </div>
-        </div>
-
-        <script>
-            // 存储信息更新
-            function updateStorage() {
-                fetch('/storage')
-                    .then(response => response.json())
-                    .then(data => {
-                        const total = (data.total / 1024).toFixed(2);
-                        const used = (data.used / 1024).toFixed(2);
-                        const free = (data.free / 1024).toFixed(2);
-                        document.getElementById('storage').innerHTML = 
-                            `总空间: ${total} KB\n已使用: ${used} KB\n剩余空间: ${free} KB`.replace(/\n/g, '<br>');
-                    });
-            }
-
-            // 文件列表刷新
-            function refreshFiles() {
-                fetch('/files')
-                    .then(response => response.json())
-                    .then(files => {
-                        const list = files.map(file => `
-                            <li>
-                                <span style="flex-grow:1">${file.name}</span>
-                                <span style="color:#8b949e; margin:0 12px;">${file.size} B</span>
-                                <button onclick="downloadFile('${file.name}')">⬇️ 下载</button>
-                                <button onclick="deleteFile('${file.name}')">🗑️ 删除</button>
-                            </li>
-                        `).join('');
-                        document.getElementById('fileList').innerHTML = `<ul>${list}</ul>`;
-                    });
-            }
-
-            // 文件上传逻辑
-            function uploadFile() {
-                const fileInput = document.getElementById('fileInput');
-                if (!fileInput.files[0]) return alert('请先选择文件');
-                
-                const formData = new FormData();
-                formData.append('file', fileInput.files[0]);
-
-                fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                }).then(response => {
-                    if (response.ok) {
-                        fileInput.value = '';
-                        refreshFiles();
-                        updateStorage();
-                        alert('✅ 上传成功');
-                    }
-                });
-            }
-
-            // 文件删除确认
-            function deleteFile(filename) {
-                if (confirm(`确定要永久删除 "${filename}" 吗？`)) {
-                    fetch(`/delete?file=${filename}`, { method: 'DELETE' })
-                        .then(response => {
-                            if (response.ok) {
-                                refreshFiles();
-                                updateStorage();
-                                alert('🗑️ 文件已删除');
-                            }
-                        });
-                }
-            }
-
-            // 初始化加载
-            updateStorage();
-            refreshFiles();
-        </script>
-    </body>
-    </html>
-    )rawliteral";
-    request->send(200, "text/html", ttfhtml);
-  });
+  server.on("/ttf", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(200, "text/html", FileHtml); });
 #endif
 
   // 启动Web服务器
@@ -407,12 +149,8 @@ String WebServerFun() {
   return WiFi.softAPIP().toString();
 }
 
-// 根路径请求的处理函数
-void handleRoot() {
-  server.send(200, "text/html", RootHtml);
-}
-
-void handleSet() {
+void handleSet(AsyncWebServerRequest *request)
+{
   String SethtmlForm = R"rawliteral(
 <!DOCTYPE HTML>
 <html>
@@ -604,43 +342,56 @@ void handleSet() {
   SethtmlForm += String(shu) + SethtmlForm2;
 
   String TimeString = "";
-  if (StartHours < 10) {
+  if (StartHours < 10)
+  {
     TimeString += "0" + String(StartHours);
-  } else {
+  }
+  else
+  {
     TimeString += String(StartHours);
   }
   TimeString += ":";
-  if (StartMinutes < 10) {
+  if (StartMinutes < 10)
+  {
     TimeString += "0" + String(StartMinutes);
-  } else {
+  }
+  else
+  {
     TimeString += String(StartMinutes);
   }
   SethtmlForm.replace("08:00", TimeString);
   TimeString = "";
-  if (EndHours < 10) {
+  if (EndHours < 10)
+  {
     TimeString += "0" + String(EndHours);
-  } else {
+  }
+  else
+  {
     TimeString += String(EndHours);
   }
   TimeString += ":";
-  if (EndMinutes < 10) {
+  if (EndMinutes < 10)
+  {
     TimeString += "0" + String(EndMinutes);
-  } else {
+  }
+  else
+  {
     TimeString += String(EndMinutes);
   }
   SethtmlForm.replace("17:30", TimeString);
   SethtmlForm.replace("22.9882", String(LatitudeVal));
   SethtmlForm.replace("114.3198", String(LongitudeVal));
-  
+
   SethtmlForm.replace("0checked0", APIPassage & 0x01 ? "checked" : "");
   SethtmlForm.replace("1checked1", APIPassage & 0x02 ? "checked" : "");
   SethtmlForm.replace("2checked2", APIPassage & 0x04 ? "checked" : "");
   SethtmlForm.replace("3checked3", APIPassage & 0x08 ? "checked" : "");
 
-  server.send(200, "text/html", SethtmlForm);
+  request->send(200, "text/html", SethtmlForm);
 }
 
-void handleWifi() {  // HTML表单，供用户输入Wi-Fi信息
+void handleWifi(AsyncWebServerRequest *request)
+{ // HTML表单，供用户输入Wi-Fi信息
   String htmlForm = R"rawliteral(
 <!DOCTYPE HTML>
 <html>
@@ -763,7 +514,8 @@ void handleWifi() {  // HTML表单，供用户输入Wi-Fi信息
     )rawliteral";
   // 扫描附近WiFi
   int n = WiFi.scanNetworks();
-  for (size_t i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++)
+  {
     htmlForm += "<div class=\"wifi-item\" onclick=\"showPasswordInput(this)\">" + WiFi.SSID(i) + "</div>";
   }
   htmlForm += R"rawliteral(
@@ -777,7 +529,8 @@ void handleWifi() {  // HTML表单，供用户输入Wi-Fi信息
       <label>选择被覆盖WiFi:</label>
         )rawliteral";
 
-  for (unsigned int i = 0; i < WifiDateMaxSize; ++i) {
+  for (unsigned int i = 0; i < WifiDateMaxSize; ++i)
+  {
     String WIFIINFO = R"rawliteral(<div class="number-option">
           <input type="radio" id=")rawliteral";
     WIFIINFO += "num" + String(i);
@@ -838,20 +591,23 @@ void handleWifi() {  // HTML表单，供用户输入Wi-Fi信息
 </html>
     )rawliteral";
   Debug("提供Wed服务\n");
-  server.send(200, "text/html", htmlForm);
+  request->send(200, "text/html", htmlForm);
 }
 
 // 处理WiFi配置提交
-void handleWifiConfig() {
-  unsigned int NumberConfig = server.arg("number").toInt();
-  String ssidConfig = server.arg("ssid");
-  String passwordConfig = server.arg("password");
+void handleWifiConfig(AsyncWebServerRequest *request)
+{
+  unsigned int NumberConfig = request->arg("number").toInt();
+  String ssidConfig = request->arg("ssid");
+  String passwordConfig = request->arg("password");
 
-  if (ssidConfig.length() > (WiFiStrInterval / 2)) {
+  if (ssidConfig.length() > (WiFiStrInterval / 2))
+  {
     Debug("WiFi名字超出设定储存空间\n");
     goto handleWifiConfigEnd;
   }
-  if (passwordConfig.length() > (WiFiStrInterval / 2)) {
+  if (passwordConfig.length() > (WiFiStrInterval / 2))
+  {
     Debug("WiFi密码超出设定储存空间\n");
     goto handleWifiConfigEnd;
   }
@@ -864,22 +620,23 @@ void handleWifiConfig() {
   writeStringToEEPROM(WifiNameAddr + (NumberConfig * WiFiStrInterval), ssidConfig);
   writeStringToEEPROM(WifiPassAddr + (NumberConfig * WiFiStrInterval), passwordConfig);
 handleWifiConfigEnd:
-  server.send(200, "text/html", RootHtml);
+  request->send(200, "text/html", RootHtml);
 }
 
 // 处理WiFi配置提交
-void handleSetConfig() {
-  String timeConfig = server.arg("TimeVal");
+void handleSetConfig(AsyncWebServerRequest *request)
+{
+  String timeConfig = request->arg("TimeVal");
   Debug(timeConfig + "\n");
-  String StartTimeConfig = server.arg("StartTime");
+  String StartTimeConfig = request->arg("StartTime");
   Debug(StartTimeConfig + "\n");
-  String EndTimeConfig = server.arg("EndTime");
+  String EndTimeConfig = request->arg("EndTime");
   Debug(EndTimeConfig + "\n");
-  String LatitudeConfig = server.arg("Latitude");
+  String LatitudeConfig = request->arg("Latitude");
   Debug(LatitudeConfig + "\n");
-  String LongitudeConfig = server.arg("Longitude");
+  String LongitudeConfig = request->arg("Longitude");
   Debug(LongitudeConfig + "\n");
-  String BoolFlageConfig = server.arg("BoolFlage");
+  String BoolFlageConfig = request->arg("BoolFlage");
   Debug(BoolFlageConfig + "\n");
 
   // 读取字符串
@@ -916,20 +673,112 @@ void handleSetConfig() {
   EEPROM.put(SentenceAPIPassageAddr, HMData);
   EEPROM.commit();
 
-  server.send(200, "text/html", RootHtml);
+  request->send(200, "text/html", RootHtml);
 }
 
-void handleRestart() {
+void handleRestart(AsyncWebServerRequest *request)
+{
   // 提示用户已提交WiFi信息
   String response = "<h1>重启中...</h1>";
-  server.send(200, "text/html", response);
+  request->send(200, "text/html", response);
   DEV_Delay_ms(100);
   // 调用esp_restart() 函数进行重启
   Debug("重启\n");
   esp_restart();
 }
 
-const char *RootHtml = R"rawliteral(
+// 获取文件列表
+void GetFileList(AsyncWebServerRequest *request)
+{
+  String json = "[";
+  File root = SPIFFS.open("/", "r");
+  File file = root.openNextFile();
+  while (file)
+  {
+    if (json != "[")
+      json += ',';
+    json += "{\"name\":\"" + String(file.name()) + "\",";
+    json += "\"size\":" + String(file.size()) + "}";
+    file.close();
+    file = root.openNextFile();
+  }
+  json += "]";
+  request->send(200, "application/json", json);
+}
+// 文件下载
+void FileDownload(AsyncWebServerRequest *request)
+{
+  if (request->hasParam("file"))
+  {
+    String filename = "/" + request->getParam("file")->value();
+    if (SPIFFS.exists(filename))
+    {
+      request->send(SPIFFS, filename, "application/octet-stream");
+    }
+    else
+    {
+      request->send(404, "text/plain", "File not found");
+    }
+  }
+  else
+  {
+    request->send(400, "text/plain", "Bad request");
+  }
+}
+// 文件删除
+void FileDeletion(AsyncWebServerRequest *request)
+{
+  if (request->hasParam("file"))
+  {
+    String filename = "/" + request->getParam("file")->value();
+    if (SPIFFS.remove(filename))
+    {
+      request->send(200, "text/plain", "File deleted");
+    }
+    else
+    {
+      request->send(500, "text/plain", "Delete failed");
+    }
+  }
+  else
+  {
+    request->send(400, "text/plain", "Bad request");
+  }
+}
+// 获取存储信息
+void RetrieveStorageInformation(AsyncWebServerRequest *request)
+{
+  size_t total = SPIFFS.totalBytes();
+  size_t used = SPIFFS.usedBytes();
+  String json = "{";
+  json += "\"total\":" + String(total) + ",";
+  json += "\"used\":" + String(used) + ",";
+  json += "\"free\":" + String(total - used);
+  json += "}";
+  request->send(200, "application/json", json);
+}
+// 文件上传处理
+void FileUploadProcessing(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+{
+  if (!index)
+  {
+    filename = "/" + filename;
+    request->_tempFile = SPIFFS.open(filename, "w");
+  }
+  if (request->_tempFile)
+  {
+    request->_tempFile.write(data, len);
+  }
+  if (final)
+  {
+    if (request->_tempFile)
+    {
+      request->_tempFile.close();
+    }
+  }
+}
+
+const char *RootHtml PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -1062,6 +911,210 @@ const char *RootHtml = R"rawliteral(
                     fill="#3498DA" p-id="1500"></path>
             </svg> </a>
     </div>
+</body>
+</html>
+)rawliteral";
+
+const char *FileHtml PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>ESP32 文件管理器</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            margin: 20px;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 20px;
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            box-shadow: 0 1px 0 rgba(48,54,61,0.5);
+        }
+        h1, h2 {
+            color: #e6edf3;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 0.3em;
+            margin-top: 0;
+        }
+        h1 { font-size: 24px; }
+        h2 { font-size: 20px; }
+
+        /* 自定义文件上传按钮 */
+        .custom-file-upload {
+            display: inline-block;
+            padding: 5px 16px;
+            background-color: #21262d;
+            border: 1px solid #363b42;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.1s cubic-bezier(0.3,0,0.5,1);
+        }
+        .custom-file-upload:hover {
+            background-color: #2d333b;
+            border-color: #8b949e;
+        }
+        input[type="file"] {
+            display: none;
+        }
+
+        /* 统一按钮样式 */
+        button {
+            background-color: #21262d;
+            border: 1px solid #363b42;
+            color: #c9d1d9;
+            padding: 5px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.1s cubic-bezier(0.3,0,0.5,1);
+        }
+        button:hover {
+            background-color: #2d333b;
+            border-color: #8b949e;
+        }
+        button:active {
+            background-color: #3b424b;
+        }
+
+        /* 文件列表样式 */
+        ul {
+            padding-left: 0;
+            margin: 15px 0;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+        }
+        li {
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #30363d;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+        li::before {
+            content: "📄";
+            margin-right: 12px;
+            filter: hue-rotate(180deg);
+        }
+
+        /* 存储信息样式 */
+        #storage {
+            padding: 12px;
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #8b949e;
+            font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ESP32 文件管理器</h1>
+        
+        <div class="section">
+            <h2>存储信息</h2>
+            <div id="storage">正在加载...</div>
+        </div>
+
+        <div class="section">
+            <h2>文件上传</h2>
+            <label class="custom-file-upload">
+                <span>选择文件</span>
+                <input type="file" id="fileInput">
+            </label>
+            <button onclick="uploadFile()">开始上传</button>
+        </div>
+
+        <div class="section">
+            <h2>文件列表</h2>
+            <button onclick="refreshFiles()" style="margin-bottom: 15px;">🔄 刷新列表</button>
+            <div id="fileList"></div>
+        </div>
+    </div>
+
+    <script>
+        // 存储信息更新
+        function updateStorage() {
+            fetch('/storage')
+                .then(response => response.json())
+                .then(data => {
+                    const total = (data.total / 1024).toFixed(2);
+                    const used = (data.used / 1024).toFixed(2);
+                    const free = (data.free / 1024).toFixed(2);
+                    document.getElementById('storage').innerHTML = 
+                        `总空间: ${total} KB\n已使用: ${used} KB\n剩余空间: ${free} KB`.replace(/\n/g, '<br>');
+                });
+        }
+
+        // 文件列表刷新
+        function refreshFiles() {
+            fetch('/files')
+                .then(response => response.json())
+                .then(files => {
+                    const list = files.map(file => `
+                        <li>
+                            <span style="flex-grow:1">${file.name}</span>
+                            <span style="color:#8b949e; margin:0 12px;">${file.size} B</span>
+                            <button onclick="downloadFile('${file.name}')">⬇️ 下载</button>
+                            <button onclick="deleteFile('${file.name}')">🗑️ 删除</button>
+                        </li>
+                    `).join('');
+                    document.getElementById('fileList').innerHTML = `<ul>${list}</ul>`;
+                });
+        }
+
+        // 文件上传逻辑
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files[0]) return alert('请先选择文件');
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    fileInput.value = '';
+                    refreshFiles();
+                    updateStorage();
+                    alert('✅ 上传成功');
+                }
+            });
+        }
+
+        // 文件删除确认
+        function deleteFile(filename) {
+            if (confirm(`确定要永久删除 "${filename}" 吗？`)) {
+                fetch(`/delete?file=${filename}`, { method: 'DELETE' })
+                    .then(response => {
+                        if (response.ok) {
+                            refreshFiles();
+                            updateStorage();
+                            alert('🗑️ 文件已删除');
+                        }
+                    });
+            }
+        }
+
+        // 初始化加载
+        updateStorage();
+        refreshFiles();
+    </script>
 </body>
 </html>
 )rawliteral";

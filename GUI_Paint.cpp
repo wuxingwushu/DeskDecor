@@ -758,7 +758,7 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename, unsigned int bian
     unsigned int Deflection;   // 字体偏移
     unsigned char LineNum = 0; // 当前几行文字了（从零开始）
 
-#if From_Bin
+#if From_Bin == 0
     WordInfoFile = SPIFFS.open("/FontInfo.bin");
     if (!WordInfoFile)
     {

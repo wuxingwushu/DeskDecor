@@ -24,12 +24,13 @@ void setup() {
   unsigned int ConsumeTime = millis();
   // 初始化 模块或设备
   DEV_Module_Init();
+  Debug("开机\n");
   // 初始化 EEPROM
   EEPROM.begin(EepromBufferSize);
   // 初始化 屏幕
   EPD_2in13_V4_Init();
   // 初始化屏幕内容
-  UBYTE *BlackImage;// 显示缓冲
+  UBYTE *BlackImage;  // 显示缓冲
   const UWORD Imagesize = ((EPD_2in13_V4_WIDTH % 8 == 0) ? (EPD_2in13_V4_WIDTH / 8) : (EPD_2in13_V4_WIDTH / 8 + 1)) * EPD_2in13_V4_HEIGHT;
   if ((BlackImage = (UBYTE *)malloc(Imagesize)) == NULL) {
     Debug("Failed to apply for black memory...\n");
@@ -45,7 +46,7 @@ void setup() {
     Debug("An Error has occurred while mounting SPIFFS\n");
     return;
   }
-#if 0 // 测试代码，可以删除
+#if 0  // 测试代码，可以删除
   writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 0), "道生");
   writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 0), "369784512");
   writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 1), "KT-2.4G");
@@ -54,13 +55,13 @@ void setup() {
   writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 2), "eku7dx5f");
   writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 3), "888");
   writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 3), "Huangze123");
-  writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 4), "USER_028892");
-  writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 4), "88888888");
+  writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 4), "USER_128978");
+  writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 4), "70438480");
 #endif
   ShowFileInfo();
   DEV_Delay_ms(10);
 
-  unsigned short DelayTime;       // 延迟时间（分）
+  unsigned short DelayTime;               // 延迟时间（分）
   EEPROM.get(SleepValueAddr, DelayTime);  // 獲取一言刷新間隔時間（分）
   CaseInfo = ConnectWIFI();               // 连接wifi
   if (CaseInfo == Network_Wed)            // 开启Wed服务
@@ -144,17 +145,17 @@ void setup() {
     // 更新离线时间(计算下次唤醒的时间)
     ConsumeTime = millis() - ConsumeTime;
     Debug("耗时:" + String(ConsumeTime) + "ms\n");
-    TimeS += ConsumeTime / 1000;
-    if(TimeS >= 60) {
+    TimeS += ConsumeTime / 1000 + 1;
+    if (TimeS >= 60) {
       TimeS -= 60;
       ++DelayTime;
     }
     unsigned int TimeML = TimeM;
     TimeML += DelayTime;
-    while(TimeML >= 60) {
+    while (TimeML >= 60) {
       TimeML -= 60;
       ++TimeH;
-      if(TimeH >= 24){
+      if (TimeH >= 24) {
         TimeH -= 24;
       }
     }
@@ -177,9 +178,4 @@ void setup() {
   }
 }
 
-void loop() {
-  if (CaseInfo == Network_Wed) {
-    // 处理来自客户端的HTTP请求
-    server.handleClient();
-  }
-}
+void loop() {}

@@ -2,7 +2,7 @@
 #define __Network_H
 
 #include <string.h>
-#include <WebServer.h>
+#include <ESPAsyncWebServer.h> // 主库
 
 // const char *ssid = "KT-2.4G", *password = "aurex123456";
 // const char* ssid = "CMCC-U55E", *password = "eku7dx5f";
@@ -17,7 +17,7 @@ typedef enum
     Network_Wed = 3  // 启动Wed服务
 } NetworkCase;
 
-extern WebServer server;
+extern AsyncWebServer server;
 
 // 连接wifi
 NetworkCase ConnectWIFI();
@@ -25,20 +25,30 @@ NetworkCase ConnectWIFI();
 // 启动WebServer服务
 String WebServerFun();
 
-// 根路径请求的处理函数
-void handleRoot();
-
 // 設置WIFI網頁
-void handleWifi();
+void handleWifi(AsyncWebServerRequest *request);
 // 处理WiFi配置提交
-void handleWifiConfig();
+void handleWifiConfig(AsyncWebServerRequest *request);
 // 設置界面
-void handleSet();
+void handleSet(AsyncWebServerRequest *request);
 // 处理WiFi配置提交
-void handleSetConfig();
+void handleSetConfig(AsyncWebServerRequest *request);
 // 重启
-void handleRestart();
+void handleRestart(AsyncWebServerRequest *request);
+
+
+// 获取文件列表
+void GetFileList(AsyncWebServerRequest *request);
+// 文件下载
+void FileDownload(AsyncWebServerRequest *request);
+// 文件删除
+void FileDeletion(AsyncWebServerRequest *request);
+// 获取存储信息
+void RetrieveStorageInformation(AsyncWebServerRequest *request);
+// 文件上传处理
+void FileUploadProcessing(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
 
 extern const char *RootHtml; // 主页
+extern const char *FileHtml; // 文件
 
 #endif

@@ -97,7 +97,7 @@ unsigned short from_bytes(const char* bytes) {
     return from_Deviation(result);
 }
 
-#define From_Bin 1
+#define From_Bin 0
 
 #if From_Bin
 const FontInformation FontInfo[] = {
