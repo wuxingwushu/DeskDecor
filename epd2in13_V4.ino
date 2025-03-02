@@ -57,8 +57,8 @@ void setup() {
   writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 3), "Huangze123");
   writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 4), "USER_128978");
   writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 4), "70438480");
-#endif
   ShowFileInfo();
+#endif
   DEV_Delay_ms(10);
 
   unsigned short DelayTime;               // 延迟时间（分）

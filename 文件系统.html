@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>ESP32 文件管理器</title>
@@ -11,26 +12,36 @@
             color: #c9d1d9;
             line-height: 1.5;
         }
+
         .container {
             max-width: 800px;
             margin: 0 auto;
         }
+
         .section {
             margin-bottom: 20px;
             padding: 20px;
             background-color: #161b22;
             border: 1px solid #30363d;
             border-radius: 6px;
-            box-shadow: 0 1px 0 rgba(48,54,61,0.5);
+            box-shadow: 0 1px 0 rgba(48, 54, 61, 0.5);
         }
-        h1, h2 {
+
+        h1,
+        h2 {
             color: #e6edf3;
             border-bottom: 1px solid #30363d;
             padding-bottom: 0.3em;
             margin-top: 0;
         }
-        h1 { font-size: 24px; }
-        h2 { font-size: 20px; }
+
+        h1 {
+            font-size: 24px;
+        }
+
+        h2 {
+            font-size: 20px;
+        }
 
         /* 自定义文件上传按钮 */
         .custom-file-upload {
@@ -40,12 +51,14 @@
             border: 1px solid #363b42;
             border-radius: 6px;
             cursor: pointer;
-            transition: all 0.1s cubic-bezier(0.3,0,0.5,1);
+            transition: all 0.1s cubic-bezier(0.3, 0, 0.5, 1);
         }
+
         .custom-file-upload:hover {
             background-color: #2d333b;
             border-color: #8b949e;
         }
+
         input[type="file"] {
             display: none;
         }
@@ -59,12 +72,14 @@
             border-radius: 6px;
             font-size: 14px;
             cursor: pointer;
-            transition: all 0.1s cubic-bezier(0.3,0,0.5,1);
+            transition: all 0.1s cubic-bezier(0.3, 0, 0.5, 1);
         }
+
         button:hover {
             background-color: #2d333b;
             border-color: #8b949e;
         }
+
         button:active {
             background-color: #3b424b;
         }
@@ -76,15 +91,18 @@
             border: 1px solid #30363d;
             border-radius: 6px;
         }
+
         li {
             padding: 8px 16px;
             display: flex;
             align-items: center;
             border-bottom: 1px solid #30363d;
         }
+
         li:last-child {
             border-bottom: none;
         }
+
         li::before {
             content: "📄";
             margin-right: 12px;
@@ -102,10 +120,11 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>ESP32 文件管理器</h1>
-        
+
         <div class="section">
             <h2>存储信息</h2>
             <div id="storage">正在加载...</div>
@@ -136,7 +155,7 @@
                     const total = (data.total / 1024).toFixed(2);
                     const used = (data.used / 1024).toFixed(2);
                     const free = (data.free / 1024).toFixed(2);
-                    document.getElementById('storage').innerHTML = 
+                    document.getElementById('storage').innerHTML =
                         `总空间: ${total} KB\n已使用: ${used} KB\n剩余空间: ${free} KB`.replace(/\n/g, '<br>');
                 });
         }
@@ -149,7 +168,7 @@
                     const list = files.map(file => `
                         <li>
                             <span style="flex-grow:1">${file.name}</span>
-                            <span style="color:#8b949e; margin:0 12px;">${file.size} B</span>
+                            <span style="color:#8b949e; margin:0 12px;">${file.size / 1024} KB</span>
                             <button onclick="downloadFile('${file.name}')">⬇️ 下载</button>
                             <button onclick="deleteFile('${file.name}')">🗑️ 删除</button>
                         </li>
@@ -162,7 +181,7 @@
         function uploadFile() {
             const fileInput = document.getElementById('fileInput');
             if (!fileInput.files[0]) return alert('请先选择文件');
-            
+
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
 
@@ -193,9 +212,41 @@
             }
         }
 
+        // 增强版下载函数（支持大文件进度跟踪）
+        // 前端JavaScript文件下载函数
+        function downloadFile(filename) {
+            // 1. 创建隐藏的下载链接
+            const link = document.createElement('a');
+            
+            // 2. 构建下载请求地址
+            link.href = `/download?file=${encodeURIComponent(filename)}`;
+            
+            // 3. 设置下载属性（强制下载而非预览）
+            link.download = filename;
+            
+            // 4. 设置链接显示样式
+            link.style.display = 'none';
+            
+            // 5. 将链接添加到DOM树
+            document.body.appendChild(link);
+            
+            // 6. 模拟用户点击触发下载
+            link.click();
+            
+            // 7. 清理临时创建的DOM元素
+            document.body.removeChild(link);
+            
+            // 8. 错误处理（可选）
+            link.onerror = function() {
+                console.error('文件下载失败:', filename);
+                alert('下载失败，请检查文件名是否正确');
+            }
+        }
+
         // 初始化加载
         updateStorage();
         refreshFiles();
     </script>
 </body>
+
 </html>

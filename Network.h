@@ -8,6 +8,7 @@
 // const char* ssid = "CMCC-U55E", *password = "eku7dx5f";
 // const char* ssid = "道生", *password = "369784512";
 // const char* ssid = "USER_128978", *password = "70438480";
+// const char* ssid = "888", *password = "Huangze123";
 
 // 网络情况枚举
 typedef enum

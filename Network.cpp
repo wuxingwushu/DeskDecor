@@ -706,24 +706,53 @@ void GetFileList(AsyncWebServerRequest *request)
   request->send(200, "application/json", json);
 }
 // 文件下载
-void FileDownload(AsyncWebServerRequest *request)
-{
-  if (request->hasParam("file"))
-  {
-    String filename = "/" + request->getParam("file")->value();
-    if (SPIFFS.exists(filename))
-    {
-      request->send(SPIFFS, filename, "application/octet-stream");
-    }
-    else
-    {
-      request->send(404, "text/plain", "File not found");
-    }
+void FileDownload(AsyncWebServerRequest *request) {
+  // 安全处理阶段
+  String filename = "/" + request->getParam("file")->value();
+  Debug("请求下载:" + filename + "\n");
+
+  File file = SPIFFS.open(filename.c_str()); // 打开芯片内存储的文件
+  if(!file){
+    Debug("文件未找到:" + filename + "\n");
+    request->send(404, "text/plain", "文件未找到");
+    return;
   }
-  else
-  {
-    request->send(400, "text/plain", "Bad request");
-  }
+
+  // 创建异步响应对象
+  AsyncWebServerResponse *response = request->beginResponse(
+    "application/octet-stream", 
+    file.size(),
+    [filename](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
+      static File fsFile = SPIFFS.open(filename.c_str(), "r");
+      
+      if (!fsFile) {
+        Debug("文件打开失败\n");
+        return 0;
+      }
+      
+      if (index == 0) {
+        fsFile.seek(0); // 重置文件指针
+      }
+      
+      size_t bytesRead = fsFile.read(buffer, maxLen);
+      
+      if (bytesRead == 0) {
+        fsFile.close();
+        Debug("文件传输完成\n");
+      }
+      
+      return bytesRead;
+    }
+  );
+
+  file.close();
+
+  // 设置响应头（正确方法）
+  response->addHeader("Content-Disposition", "attachment; filename=\"" + request->getParam("file")->value() + "\"");
+  response->addHeader("Cache-Control", "no-cache");
+  
+  // 发送响应
+  request->send(response);
 }
 // 文件删除
 void FileDeletion(AsyncWebServerRequest *request)
@@ -1067,7 +1096,7 @@ const char *FileHtml PROGMEM = R"rawliteral(
                     const list = files.map(file => `
                         <li>
                             <span style="flex-grow:1">${file.name}</span>
-                            <span style="color:#8b949e; margin:0 12px;">${file.size} B</span>
+                            <span style="color:#8b949e; margin:0 12px;">${file.size / 1024} KB</span>
                             <button onclick="downloadFile('${file.name}')">⬇️ 下载</button>
                             <button onclick="deleteFile('${file.name}')">🗑️ 删除</button>
                         </li>
@@ -1108,6 +1137,37 @@ const char *FileHtml PROGMEM = R"rawliteral(
                             alert('🗑️ 文件已删除');
                         }
                     });
+            }
+        }
+
+        // 增强版下载函数（支持大文件进度跟踪）
+        // 前端JavaScript文件下载函数
+        function downloadFile(filename) {
+            // 1. 创建隐藏的下载链接
+            const link = document.createElement('a');
+            
+            // 2. 构建下载请求地址
+            link.href = `/download?file=${encodeURIComponent(filename)}`;
+            
+            // 3. 设置下载属性（强制下载而非预览）
+            link.download = filename;
+            
+            // 4. 设置链接显示样式
+            link.style.display = 'none';
+            
+            // 5. 将链接添加到DOM树
+            document.body.appendChild(link);
+            
+            // 6. 模拟用户点击触发下载
+            link.click();
+            
+            // 7. 清理临时创建的DOM元素
+            document.body.removeChild(link);
+            
+            // 8. 错误处理（可选）
+            link.onerror = function() {
+                console.error('文件下载失败:', filename);
+                alert('下载失败，请检查文件名是否正确');
             }
         }
 

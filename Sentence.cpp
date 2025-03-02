@@ -169,7 +169,7 @@ SentenceInfo GetGreenTangerine(unsigned int AttemptCount){
     deserializeJson(doc, payload);
 
     QInfo.hitokoto = doc["hitokoto"];
-    QInfo.from = doc["creator"];
+    QInfo.from = doc["from"];
     QInfo.Success = true;
 
     Debug("Hitokoto: ");
