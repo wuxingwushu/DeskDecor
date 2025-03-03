@@ -117,16 +117,28 @@ String WebServerFun()
   WiFi.mode(WIFI_AP);
   WiFi.softAP("一言墨水屏");
 
-  // 定义根路径的回调函数
+  // 响应页面
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(200, "text/html", RootHtml); });
-  server.on("/wifi", handleWifi);
-  server.on("/wifi/config", HTTP_POST, handleWifiConfig); // 提交Wi-Fi信息进行连接
-  server.on("/set", handleSet);
-  server.on("/set/config", HTTP_POST, handleSetConfig);
-  server.on("/restart", handleRestart);
+  server.on("/ttf", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(200, "text/html", FileHtml); });
+  server.on("/wifi", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(200, "text/html", WifiHtml); });
+  server.on("/set", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(200, "text/html", SetHtml); });
 
-#if 1
+  // 配置wifi信息
+  server.on("/wifi/config", HTTP_POST, handleWifiConfig); // 提交Wi-Fi信息进行连接
+  // 获取wifi信息
+  server.on("/GetWifiInfo", HTTP_GET, GetWifiInfo);
+  // 获取以储存WIFI
+  server.on("/GetStoreWifi", HTTP_GET, GetStoreWifi);
+  // 获取设置信息
+  server.on("/GetSetInfo", HTTP_GET, GetSetInfo);
+  // 配置设置
+  server.on("/set/config", HTTP_POST, handleSetConfig);
+  // 重启
+  server.on("/restart", handleRestart);
   // 获取文件列表
   server.on("/files", HTTP_GET, GetFileList);
   // 文件下载
@@ -138,10 +150,6 @@ String WebServerFun()
   // 文件上传处理
   server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request)
             { request->send(200); }, FileUploadProcessing);
-  // 提供静态页面
-  server.on("/ttf", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(200, "text/html", FileHtml); });
-#endif
 
   // 启动Web服务器
   server.begin();
@@ -149,184 +157,37 @@ String WebServerFun()
   return WiFi.softAPIP().toString();
 }
 
-void handleSet(AsyncWebServerRequest *request)
-{
-  String SethtmlForm = R"rawliteral(
-<!DOCTYPE HTML>
-<html>
-<head>
-  <meta http-equiv="Content-Type" content="text/html; width=device-width, initial-scale=1.0,charset=utf-8"/>
-  <title>ESP32 设置界面</title>
-  <style>
-    body{
-      height: 100vh;
-      margin: 0;
-      font-family: 'SF Mono', 'Roboto Mono', monospace;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background-color: #24292e; /* 暗色背景 */
-      color: #c9d1d9; /* 浅色文字 */
-    }
+void GetWifiInfo(AsyncWebServerRequest *request){
+  Debug("扫描附近wifi\n");
+  String json = "[";
+  // 扫描附近WiFi
+  int n = WiFi.scanNetworks();
+  for (size_t i = 0; i < n; i++)
+  {
+    if (json != "[")
+      json += ',';
+    json += "{\"name\":\"" + WiFi.SSID(i) + "\"}";
+  }
+  json += "]";
+  request->send(200, "application/json", json);
+}
 
-    .form-input {
-      width: calc(100% - 20px);
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      box-sizing: border-box;
-      background-color: #161b22;
-      color: #c9d1d9;
-      transition: border-color 0.3s ease;
-    }
+void GetStoreWifi(AsyncWebServerRequest *request){
+  Debug("获取储存wifi\n");
+  String json = "[";
+  for (unsigned int i = 0; i < WifiDateMaxSize; ++i)
+  {
+    if (json != "[")
+      json += ',';
+    json += "{\"name\":\"" + readStringFromEEPROM(WifiNameAddr + (WiFiStrInterval * i)) + "\",";
+    json += "\"size\":" + String(i) + "}";
+  }
+  json += "]";
+  request->send(200, "application/json", json);
+}
 
-    .form-input:focus {
-      border-color: #58a6ff;
-    }
-
-    .submit-button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      background-color: #2ea043;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-
-    .submit-button:hover {
-      background-color: #279f42;
-    }
-
-    .form-container {
-      padding: 20px;
-      background-color: #161b22;
-      border-radius: 6px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .switch-container {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin: 15px 0;
-    }
-
-    .switch-label {
-      display: flex;
-      align-items: center;
-      font-size: 0.9em;
-    }
-
-    .switch-label input {
-      margin-right: 8px;
-    }
-  </style>
-</head>
-<body>
-  <form action="/set/config" method="POST" id="passwordForm" class="form-container">
-    <p>更新時間(分钟):</p>
-    <input type="number" id="TimeVal" name="TimeVal" class="form-input" value=")rawliteral";
-  const String SethtmlForm2 = R"rawliteral(" min="0" max="1440">
-
-    <p>（开始时间 等于 结束时间 代表不停止工作）</p>
-    <p>开始时间:</p>
-    <input type="time" id="StartTime" name="StartTime" class="form-input" required value="08:00" pattern="[0-2][0-9]:[0-5][0-9]" step="60" placeholder="例如: 08:00">
-
-    <p>结束时间:</p>
-    <input type="time" id="EndTime" name="EndTime" class="form-input" required value="17:30" pattern="[0-2][0-9]:[0-5][0-9]" step="60" placeholder="例如: 17:30">
-
-    <p>纬度:</p>
-    <input type="number" id="Latitude" name="Latitude" class="form-input" value="22.9882" step="0.0001" min="-90" max="90" placeholder="例如: 22.8892">
-
-    <p>经度:</p>
-    <input type="number" id="Longitude" name="Longitude" class="form-input" value="114.3198" step="0.0001" min="-180" max="180" placeholder="例如: 119.8562">
-
-    <p>功能开关:</p>
-    <div class="switch-container">
-      <label class="switch-label">
-        <input type="checkbox" class="bool-switch" data-bit="0" 0checked0>
-        循环模式
-      </label>
-      <label class="switch-label">
-        <input type="checkbox" class="bool-switch" data-bit="1" 1checked1>
-        一言
-      </label>
-      <label class="switch-label">
-        <input type="checkbox" class="bool-switch" data-bit="2" 2checked2>
-        ONE
-      </label>
-      <label class="switch-label">
-        <input type="checkbox" class="bool-switch" data-bit="3" 3checked3>
-        青桔
-      </label>
-    </div>
-
-    <input type="hidden" id="BoolFlage" name="BoolFlage">
-
-    <button type="submit" class="submit-button">修改</button>
-  </form>
-  <script>
-    document.getElementById('passwordForm').addEventListener('submit', function(e) {
-      const loopModeCheckbox = document.querySelector('.bool-switch[data-bit="0"]');
-      const otherCheckboxes = document.querySelectorAll('.bool-switch:not([data-bit="0"])');
-      
-      // 验证循环模式关闭时其他选项只能选一个
-      if (!loopModeCheckbox.checked) {
-        const checkedCount = Array.from(otherCheckboxes).filter(cb => cb.checked).length;
-        if (checkedCount > 1) {
-          alert('当“循环模式”关闭时，只能选择“青桔”、“ONE”或“一言”中的一个！');
-          e.preventDefault();
-          return;
-        }
-      }
-
-      // 原始flags计算逻辑
-      let flags = 0;
-      document.querySelectorAll('.bool-switch').forEach(checkbox => {
-        if (checkbox.checked) {
-          const bit = parseInt(checkbox.dataset.bit);
-          flags |= (1 << bit);
-        }
-      });
-      
-      document.getElementById('BoolFlage').value = flags;
-    });
-
-    // 实时交互逻辑
-    const loopModeCheckbox = document.querySelector('.bool-switch[data-bit="0"]');
-    const otherCheckboxes = document.querySelectorAll('.bool-switch[data-bit="1"], .bool-switch[data-bit="2"], .bool-switch[data-bit="3"]');
-
-    // 当循环模式状态改变时
-    loopModeCheckbox.addEventListener('change', function() {
-      if (!this.checked) {
-        // 关闭循环模式时，检查其他选项选择数量
-        const checked = Array.from(otherCheckboxes).filter(cb => cb.checked);
-        if (checked.length > 1) {
-          // 保留最后一个选中的，取消其他
-          checked.slice(0, -1).forEach(cb => cb.checked = false);
-        }
-      }
-    });
-
-    // 当其他选项改变时
-    otherCheckboxes.forEach(checkbox => {
-      checkbox.addEventListener('change', function() {
-        if (!loopModeCheckbox.checked && this.checked) {
-          // 如果循环模式关闭且当前被选中，取消其他选项
-          otherCheckboxes.forEach(other => {
-            if (other !== this) other.checked = false;
-          });
-        }
-      });
-    });
-  </script>
-</body>
-</html>
-  )rawliteral";
+void GetSetInfo(AsyncWebServerRequest *request){
+  Debug("获取设置信息\n");
   unsigned short shu;
   EEPROM.get(SleepValueAddr, shu);
   unsigned char StartHours, StartMinutes, EndHours, EndMinutes, APIPassage;
@@ -339,7 +200,8 @@ void handleSet(AsyncWebServerRequest *request)
   EEPROM.get(LatitudeAddr, LatitudeVal);
   EEPROM.get(LongitudeAddr, LongitudeVal);
 
-  SethtmlForm += String(shu) + SethtmlForm2;
+  String json = "{";
+  json += "\"TimeVal\":" + String(shu) + ",";
 
   String TimeString = "";
   if (StartHours < 10)
@@ -359,7 +221,7 @@ void handleSet(AsyncWebServerRequest *request)
   {
     TimeString += String(StartMinutes);
   }
-  SethtmlForm.replace("08:00", TimeString);
+  json += "\"StartTime\":" + TimeString + ",";
   TimeString = "";
   if (EndHours < 10)
   {
@@ -378,220 +240,13 @@ void handleSet(AsyncWebServerRequest *request)
   {
     TimeString += String(EndMinutes);
   }
-  SethtmlForm.replace("17:30", TimeString);
-  SethtmlForm.replace("22.9882", String(LatitudeVal));
-  SethtmlForm.replace("114.3198", String(LongitudeVal));
-
-  SethtmlForm.replace("0checked0", APIPassage & 0x01 ? "checked" : "");
-  SethtmlForm.replace("1checked1", APIPassage & 0x02 ? "checked" : "");
-  SethtmlForm.replace("2checked2", APIPassage & 0x04 ? "checked" : "");
-  SethtmlForm.replace("3checked3", APIPassage & 0x08 ? "checked" : "");
-
-  request->send(200, "text/html", SethtmlForm);
-}
-
-void handleWifi(AsyncWebServerRequest *request)
-{ // HTML表单，供用户输入Wi-Fi信息
-  String htmlForm = R"rawliteral(
-<!DOCTYPE HTML>
-<html>
-<head>
-  <meta http-equiv="Content-Type" content="text/html; width=device-width, initial-scale=1.0,charset=utf-8"/>
-  <title>WiFi 配置界面</title>
-  <style>
-    #numberSelect {
-      margin-top: 15px;
-      display: none;
-    }
-    #numberSelect.show {
-      display: block;
-    }
-    .number-select {
-      margin: 15px 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .number-option {
-      flex: 1;
-      margin: 0 2px;
-    }
-    .number-option input[type="radio"] {
-      display: none;
-    }
-    .number-option label {
-      display: block;
-      padding: 8px;
-      background: #2ea043;
-      border-color: #279f42;
-      border: 1px solid #30363d;
-      color: #c9d1d9;
-      border-radius: 4px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-    .number-option input[type="radio"]:checked+label {
-      background: #2ea043;
-      border-color: #279f42;
-    }
-    body,
-    html {
-      height: 100vh;
-      margin: 0;
-      font-family: 'SF Mono', 'Roboto Mono', monospace;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background-color: #24292e;
-      color: #c9d1d9;
-    }
-    .wifi-container {
-      width: 100vh;
-      max-width: 50vh;
-      background-color: #161b22;
-      border-radius: 6px;
-      overflow: hidden;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-    .wifi-item {
-      padding: 5vh;
-      width: 100%;
-      transition: background-color 0.3s ease;
-      cursor: pointer;
-      border-bottom: 1px solid #30363d;
-      text-align: center;
-    }
-    .wifi-item:hover {
-      background-color: #21262d;
-    }
-    .hidden {
-      display: none;
-    }
-    .form-input {
-      width: calc(100% - 20px);
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      box-sizing: border-box;
-      background-color: #161b22;
-      color: #c9d1d9;
-      transition: border-color 0.3s ease;
-    }
-    .form-input:focus {
-      border-color: #58a6ff;
-    }
-    .submit-button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      background-color: #2ea043;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    .submit-button:hover {
-      background-color: #279f42;
-    }
-    .form-container {
-      padding: 20px;
-      background-color: #161b22;
-      border-radius: 6px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-    label {
-      display: block;
-      margin-bottom: 5px;
-      color: #8b949e;
-    }
-  </style>
-</head>
-<body>
-  <div id="liebiao" class="wifi-container">
-    )rawliteral";
-  // 扫描附近WiFi
-  int n = WiFi.scanNetworks();
-  for (size_t i = 0; i < n; i++)
-  {
-    htmlForm += "<div class=\"wifi-item\" onclick=\"showPasswordInput(this)\">" + WiFi.SSID(i) + "</div>";
-  }
-  htmlForm += R"rawliteral(
-</div>
-  <form action="/wifi/config" method="POST" id="passwordForm" class="form-container hidden">
-    <label for="ssid" id="WifiName">WiFi名称:</label>
-    <input type="text" id="ssid" placeholder="请输入WiFi名称" name="ssid" class="form-input" required>
-    <label for="password" id="WifiPassword">WiFi密码:</label>
-    <input type="password" id="password" placeholder="请输入WiFi密码" name="password" class="form-input" required>
-    <div id="numberSelect">
-      <label>选择被覆盖WiFi:</label>
-        )rawliteral";
-
-  for (unsigned int i = 0; i < WifiDateMaxSize; ++i)
-  {
-    String WIFIINFO = R"rawliteral(<div class="number-option">
-          <input type="radio" id=")rawliteral";
-    WIFIINFO += "num" + String(i);
-    WIFIINFO += R"rawliteral(" name="number" value=")rawliteral";
-    WIFIINFO += String(i);
-    WIFIINFO += R"rawliteral(" onchange="handleNumberSelect()">
-          <label for=")rawliteral";
-    WIFIINFO += "num" + String(i);
-    WIFIINFO += "\">" + readStringFromEEPROM(WifiNameAddr + (WiFiStrInterval * i));
-    WIFIINFO += R"rawliteral(</label>
-        </div>)rawliteral";
-    htmlForm += WIFIINFO;
-    Debug(WIFIINFO + "\n");
-  }
-
-  htmlForm += R"rawliteral(
-      </div>
-    </div>
-
-    <button type="button" id="ButtonJoin" class="submit-button" onclick="handleConnect()">连接</button>
-    <button type="button" id="ButtonReturn" class="submit-button" onclick="ReturnInterface()">返回</button>
-  </form>
-</body>
-<script>
-  function showPasswordInput(element) {
-    document.getElementById("liebiao").classList.add("hidden");
-    document.getElementById("passwordForm").classList.remove("hidden");
-    document.getElementById("ssid").value = element.textContent;
-  }
-  function ReturnInterface() {
-    document.getElementById("liebiao").classList.remove("hidden");
-    document.getElementById("passwordForm").classList.add("hidden");
-    document.getElementById("numberSelect").classList.remove("show");
-    document.querySelectorAll('input[name="number"]').forEach(radio => radio.checked = false);
-  }
-  function handleConnect() {
-    const ssid = document.getElementById("ssid").value;
-    const password = document.getElementById("password").value;
-    if (!ssid || !password) {
-      alert("请先填写WiFi名称和密码");
-      return;
-    }
-    document.getElementById("numberSelect").classList.add("show");
-    document.getElementById("ssid").classList.add("hidden");
-    document.getElementById("password").classList.add("hidden");
-    document.getElementById("ButtonJoin").classList.add("hidden");
-    document.getElementById("ButtonReturn").classList.add("hidden");
-    document.getElementById("WifiName").classList.add("hidden");
-    document.getElementById("WifiPassword").classList.add("hidden");
-  }
-  function handleNumberSelect() {
-    const selected = document.querySelector('input[name="number"]:checked');
-    if (selected) {
-      document.getElementById("passwordForm").submit();
-    }
-  }
-</script>
-</html>
-    )rawliteral";
-  Debug("提供Wed服务\n");
-  request->send(200, "text/html", htmlForm);
+  json += "\"EndTime\":" + TimeString + ",";
+  json += "\"Latitude\":" + String(LatitudeVal) + ",";
+  json += "\"Longitude\":" + String(LongitudeVal) + ",";
+  json += "\"BoolFlage\":" + String(APIPassage);
+  json += "}";
+  Debug(json + "\n");
+  request->send(200, "application/json", json);
 }
 
 // 处理WiFi配置提交
@@ -690,6 +345,7 @@ void handleRestart(AsyncWebServerRequest *request)
 // 获取文件列表
 void GetFileList(AsyncWebServerRequest *request)
 {
+  Debug("获取文件列表\n");
   String json = "[";
   File root = SPIFFS.open("/", "r");
   File file = root.openNextFile();
@@ -735,6 +391,7 @@ void FileDownload(AsyncWebServerRequest *request) {
       }
       
       size_t bytesRead = fsFile.read(buffer, maxLen);
+      Debug(String(bytesRead) + "\n");
       
       if (bytesRead == 0) {
         fsFile.close();
@@ -757,26 +414,32 @@ void FileDownload(AsyncWebServerRequest *request) {
 // 文件删除
 void FileDeletion(AsyncWebServerRequest *request)
 {
+  
   if (request->hasParam("file"))
   {
     String filename = "/" + request->getParam("file")->value();
+    Debug("删除：" + filename + "\n");
     if (SPIFFS.remove(filename))
     {
+      Debug("以删除：" + filename + "\n");
       request->send(200, "text/plain", "File deleted");
     }
     else
     {
+      Debug("不存在：" + filename + "\n");
       request->send(500, "text/plain", "Delete failed");
     }
   }
   else
   {
+    Debug("删除错误！\n");
     request->send(400, "text/plain", "Bad request");
   }
 }
 // 获取存储信息
 void RetrieveStorageInformation(AsyncWebServerRequest *request)
 {
+  Debug("获取储存信息\n");
   size_t total = SPIFFS.totalBytes();
   size_t used = SPIFFS.usedBytes();
   String json = "{";
@@ -784,6 +447,7 @@ void RetrieveStorageInformation(AsyncWebServerRequest *request)
   json += "\"used\":" + String(used) + ",";
   json += "\"free\":" + String(total - used);
   json += "}";
+  Debug(json + "\n");
   request->send(200, "application/json", json);
 }
 // 文件上传处理
@@ -792,6 +456,7 @@ void FileUploadProcessing(AsyncWebServerRequest *request, String filename, size_
   if (!index)
   {
     filename = "/" + filename;
+    Debug("打开：" + filename + "\n");
     request->_tempFile = SPIFFS.open(filename, "w");
   }
   if (request->_tempFile)
@@ -802,12 +467,13 @@ void FileUploadProcessing(AsyncWebServerRequest *request, String filename, size_
   {
     if (request->_tempFile)
     {
+      Debug("关闭：" + filename + "\n");
       request->_tempFile.close();
     }
   }
 }
 
-const char *RootHtml PROGMEM = R"rawliteral(
+const char *RootHtml = R"rawliteral(
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -944,9 +610,10 @@ const char *RootHtml PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-const char *FileHtml PROGMEM = R"rawliteral(
+const char *FileHtml = R"rawliteral(
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>ESP32 文件管理器</title>
@@ -958,26 +625,36 @@ const char *FileHtml PROGMEM = R"rawliteral(
             color: #c9d1d9;
             line-height: 1.5;
         }
+
         .container {
             max-width: 800px;
             margin: 0 auto;
         }
+
         .section {
             margin-bottom: 20px;
             padding: 20px;
             background-color: #161b22;
             border: 1px solid #30363d;
             border-radius: 6px;
-            box-shadow: 0 1px 0 rgba(48,54,61,0.5);
+            box-shadow: 0 1px 0 rgba(48, 54, 61, 0.5);
         }
-        h1, h2 {
+
+        h1,
+        h2 {
             color: #e6edf3;
             border-bottom: 1px solid #30363d;
             padding-bottom: 0.3em;
             margin-top: 0;
         }
-        h1 { font-size: 24px; }
-        h2 { font-size: 20px; }
+
+        h1 {
+            font-size: 24px;
+        }
+
+        h2 {
+            font-size: 20px;
+        }
 
         /* 自定义文件上传按钮 */
         .custom-file-upload {
@@ -987,12 +664,14 @@ const char *FileHtml PROGMEM = R"rawliteral(
             border: 1px solid #363b42;
             border-radius: 6px;
             cursor: pointer;
-            transition: all 0.1s cubic-bezier(0.3,0,0.5,1);
+            transition: all 0.1s cubic-bezier(0.3, 0, 0.5, 1);
         }
+
         .custom-file-upload:hover {
             background-color: #2d333b;
             border-color: #8b949e;
         }
+
         input[type="file"] {
             display: none;
         }
@@ -1006,12 +685,14 @@ const char *FileHtml PROGMEM = R"rawliteral(
             border-radius: 6px;
             font-size: 14px;
             cursor: pointer;
-            transition: all 0.1s cubic-bezier(0.3,0,0.5,1);
+            transition: all 0.1s cubic-bezier(0.3, 0, 0.5, 1);
         }
+
         button:hover {
             background-color: #2d333b;
             border-color: #8b949e;
         }
+
         button:active {
             background-color: #3b424b;
         }
@@ -1023,15 +704,18 @@ const char *FileHtml PROGMEM = R"rawliteral(
             border: 1px solid #30363d;
             border-radius: 6px;
         }
+
         li {
             padding: 8px 16px;
             display: flex;
             align-items: center;
             border-bottom: 1px solid #30363d;
         }
+
         li:last-child {
             border-bottom: none;
         }
+
         li::before {
             content: "📄";
             margin-right: 12px;
@@ -1047,12 +731,23 @@ const char *FileHtml PROGMEM = R"rawliteral(
             color: #8b949e;
             font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
         }
+
+        /* 进度条动画 */
+        #progressBar {
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        /* 错误状态 */
+        .error-progress {
+            background-color: #da3633 !important;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>ESP32 文件管理器</h1>
-        
+
         <div class="section">
             <h2>存储信息</h2>
             <div id="storage">正在加载...</div>
@@ -1065,6 +760,16 @@ const char *FileHtml PROGMEM = R"rawliteral(
                 <input type="file" id="fileInput">
             </label>
             <button onclick="uploadFile()">开始上传</button>
+            <div id="progressContainer" style="margin-top:15px; display:none;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:200px; height:8px; background:#30363d; border-radius:4px;">
+                        <div id="progressBar"
+                            style="width:0%; height:100%; background:#2ea043; border-radius:4px; transition:width 0.3s ease;">
+                        </div>
+                    </div>
+                    <span id="progressText">0%</span>
+                </div>
+            </div>
         </div>
 
         <div class="section">
@@ -1083,7 +788,7 @@ const char *FileHtml PROGMEM = R"rawliteral(
                     const total = (data.total / 1024).toFixed(2);
                     const used = (data.used / 1024).toFixed(2);
                     const free = (data.free / 1024).toFixed(2);
-                    document.getElementById('storage').innerHTML = 
+                    document.getElementById('storage').innerHTML =
                         `总空间: ${total} KB\n已使用: ${used} KB\n剩余空间: ${free} KB`.replace(/\n/g, '<br>');
                 });
         }
@@ -1105,26 +810,63 @@ const char *FileHtml PROGMEM = R"rawliteral(
                 });
         }
 
+        function handleUploadError() {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            progressBar.style.width = '100%';
+            progressBar.style.backgroundColor = '#da3633';
+            progressText.textContent = '上传失败!';
+            setTimeout(() => document.getElementById('progressContainer').style.display = 'none', 2000);
+        }
+
         // 文件上传逻辑
         function uploadFile() {
             const fileInput = document.getElementById('fileInput');
             if (!fileInput.files[0]) return alert('请先选择文件');
-            
+
+            // 显示进度容器
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            progressContainer.style.display = 'block';
+
+            const xhr = new XMLHttpRequest();
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
 
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            }).then(response => {
-                if (response.ok) {
+            // 进度事件监听
+            xhr.upload.addEventListener('progress', function (e) {
+                if (e.lengthComputable) {
+                    const percent = (e.loaded / e.total * 100).toFixed(1);
+                    progressBar.style.width = percent + '%';
+                    progressText.textContent = percent + '%';
+                }
+            });
+
+            // 完成处理
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    progressBar.style.backgroundColor = '#2ea043';
+                    progressText.textContent = '上传完成!';
+                    setTimeout(() => progressContainer.style.display = 'none', 2000);
                     fileInput.value = '';
                     refreshFiles();
                     updateStorage();
-                    alert('✅ 上传成功');
+                } else {
+                    handleUploadError();
                 }
-            });
+            };
+
+            // 错误处理
+            xhr.onerror = function () {
+                handleUploadError();
+            };
+
+            xhr.open('POST', '/upload');
+            xhr.send(formData);
         }
+
+
 
         // 文件删除确认
         function deleteFile(filename) {
@@ -1145,27 +887,27 @@ const char *FileHtml PROGMEM = R"rawliteral(
         function downloadFile(filename) {
             // 1. 创建隐藏的下载链接
             const link = document.createElement('a');
-            
+
             // 2. 构建下载请求地址
             link.href = `/download?file=${encodeURIComponent(filename)}`;
-            
+
             // 3. 设置下载属性（强制下载而非预览）
             link.download = filename;
-            
+
             // 4. 设置链接显示样式
             link.style.display = 'none';
-            
+
             // 5. 将链接添加到DOM树
             document.body.appendChild(link);
-            
+
             // 6. 模拟用户点击触发下载
             link.click();
-            
+
             // 7. 清理临时创建的DOM元素
             document.body.removeChild(link);
-            
+
             // 8. 错误处理（可选）
-            link.onerror = function() {
+            link.onerror = function () {
                 console.error('文件下载失败:', filename);
                 alert('下载失败，请检查文件名是否正确');
             }
@@ -1176,5 +918,468 @@ const char *FileHtml PROGMEM = R"rawliteral(
         refreshFiles();
     </script>
 </body>
+
+</html>
+)rawliteral";
+
+const char *SetHtml = R"rawliteral(
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; width=device-width, initial-scale=1.0,charset=utf-8" />
+  <title>ESP32 设置界面</title>
+  <style>
+    body {
+      height: 100vh;
+      margin: 0;
+      font-family: 'SF Mono', 'Roboto Mono', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #24292e;
+      /* 暗色背景 */
+      color: #c9d1d9;
+      /* 浅色文字 */
+    }
+
+    .form-input {
+      width: calc(100% - 20px);
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      box-sizing: border-box;
+      background-color: #161b22;
+      color: #c9d1d9;
+      transition: border-color 0.3s ease;
+    }
+
+    .form-input:focus {
+      border-color: #58a6ff;
+    }
+
+    .submit-button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background-color: #2ea043;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .submit-button:hover {
+      background-color: #279f42;
+    }
+
+    .form-container {
+      padding: 20px;
+      background-color: #161b22;
+      border-radius: 6px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .switch-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 15px 0;
+    }
+
+    .switch-label {
+      display: flex;
+      align-items: center;
+      font-size: 0.9em;
+    }
+
+    .switch-label input {
+      margin-right: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <form action="/set/config" method="POST" id="passwordForm" class="form-container">
+    <p>更新時間(分钟):</p>
+    <input type="number" id="TimeVal" name="TimeVal" class="form-input" value="5">
+
+    <p>（开始时间 等于 结束时间 代表不停止工作）</p>
+    <p>开始时间:</p>
+    <input type="time" id="StartTime" name="StartTime" class="form-input" required value="08:00"
+      pattern="[0-2][0-9]:[0-5][0-9]" step="60" placeholder="例如: 08:00">
+
+    <p>结束时间:</p>
+    <input type="time" id="EndTime" name="EndTime" class="form-input" required value="17:30"
+      pattern="[0-2][0-9]:[0-5][0-9]" step="60" placeholder="例如: 17:30">
+
+    <p>纬度:</p>
+    <input type="number" id="Latitude" name="Latitude" class="form-input" value="22.9882" step="0.0001" min="-90"
+      max="90" placeholder="例如: 22.8892">
+
+    <p>经度:</p>
+    <input type="number" id="Longitude" name="Longitude" class="form-input" value="114.3198" step="0.0001" min="-180"
+      max="180" placeholder="例如: 119.8562">
+
+    <p>功能开关:</p>
+    <div class="switch-container">
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="0" checked>
+        循环模式
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="1" checked>
+        一言
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="2" checked>
+        ONE
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="bool-switch" data-bit="3" checked>
+        青桔
+      </label>
+    </div>
+
+    <input type="hidden" id="BoolFlage" name="BoolFlage">
+
+    <button type="submit" class="submit-button">修改</button>
+  </form>
+  <script>
+    function updateStorage() {
+      fetch('/GetSetInfo')
+        .then(response => response.json())
+        .then(data => {
+          alert("收到数据");
+          const TimeVal_ = data.TimeVal;
+          const StartTime_ = data.StartTime;
+          const EndTime_ = data.EndTime;
+          const Latitude_ = data.Latitude;
+          const Longitude_ = data.Longitude;
+          const BoolFlage_ = data.BoolFlage;
+
+          alert(TimeVal_);
+          alert(StartTime_);
+          alert(EndTime_);
+          alert(Latitude_);
+          alert(Longitude_);
+          alert(BoolFlage_);
+
+          document.getElementById('TimeVal').value = TimeVal_;
+          document.getElementById('StartTime').value = StartTime_;
+          document.getElementById('EndTime').value = EndTime_;
+          document.getElementById('Latitude').value = Latitude_;
+          document.getElementById('Longitude').value = Longitude_;
+          document.getElementById('BoolFlage').value = BoolFlage_;
+
+          // 更新复选框状态
+          document.querySelectorAll('.bool-switch').forEach(checkbox => {
+            const bit = parseInt(checkbox.dataset.bit);
+            checkbox.checked = (BoolFlage & (1 << bit)) !== 0;
+          });
+        });
+    }
+
+    document.getElementById('passwordForm').addEventListener('submit', function (e) {
+      const loopModeCheckbox = document.querySelector('.bool-switch[data-bit="0"]');
+      const otherCheckboxes = document.querySelectorAll('.bool-switch:not([data-bit="0"])');
+
+      // 验证循环模式关闭时其他选项只能选一个
+      if (!loopModeCheckbox.checked) {
+        const checkedCount = Array.from(otherCheckboxes).filter(cb => cb.checked).length;
+        if (checkedCount > 1) {
+          alert('当“循环模式”关闭时，只能选择“青桔”、“ONE”或“一言”中的一个！');
+          e.preventDefault();
+          return;
+        }
+      }
+
+      // 原始flags计算逻辑
+      let flags = 0;
+      document.querySelectorAll('.bool-switch').forEach(checkbox => {
+        if (checkbox.checked) {
+          const bit = parseInt(checkbox.dataset.bit);
+          flags |= (1 << bit);
+        }
+      });
+
+      document.getElementById('BoolFlage').value = flags;
+    });
+
+    // 实时交互逻辑
+    const loopModeCheckbox = document.querySelector('.bool-switch[data-bit="0"]');
+    const otherCheckboxes = document.querySelectorAll('.bool-switch[data-bit="1"], .bool-switch[data-bit="2"], .bool-switch[data-bit="3"]');
+
+    // 当循环模式状态改变时
+    loopModeCheckbox.addEventListener('change', function () {
+      if (!this.checked) {
+        // 关闭循环模式时，检查其他选项选择数量
+        const checked = Array.from(otherCheckboxes).filter(cb => cb.checked);
+        if (checked.length > 1) {
+          // 保留最后一个选中的，取消其他
+          checked.slice(0, -1).forEach(cb => cb.checked = false);
+        }
+      }
+    });
+
+    // 当其他选项改变时
+    otherCheckboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', function () {
+        if (!loopModeCheckbox.checked && this.checked) {
+          // 如果循环模式关闭且当前被选中，取消其他选项
+          otherCheckboxes.forEach(other => {
+            if (other !== this) other.checked = false;
+          });
+        }
+      });
+    });
+
+    updateStorage();
+  </script>
+</body>
+
+</html>
+)rawliteral";
+
+const char *WifiHtml = R"rawliteral(
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; width=device-width, initial-scale=1.0,charset=utf-8" />
+  <title>WiFi 配置界面</title>
+  <style>
+    /* 新增数字选择框样式 */
+    #numberSelect {
+      margin-top: 15px;
+      display: none;
+    }
+
+    #numberSelect.show {
+      display: block;
+    }
+
+    .number-select {
+      margin: 15px 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .number-option {
+      flex: 1;
+      margin: 0 2px;
+    }
+
+    .number-option input[type="radio"] {
+      display: none;
+    }
+
+    .number-option label {
+      display: block;
+      padding: 8px;
+      background: #2ea043;
+      border-color: #279f42;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      border-radius: 4px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .number-option input[type="radio"]:checked+label {
+      background: #2ea043;
+      border-color: #279f42;
+    }
+
+    /* 原有样式保持不变 */
+    body,
+    html {
+      height: 100vh;
+      margin: 0;
+      font-family: 'SF Mono', 'Roboto Mono', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #24292e;
+      color: #c9d1d9;
+    }
+
+    .wifi-container {
+      width: 100vh;
+      max-width: 50vh;
+      background-color: #161b22;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .wifi-item {
+      padding: 5vh;
+      width: 100%;
+      transition: background-color 0.3s ease;
+      cursor: pointer;
+      border-bottom: 1px solid #30363d;
+      text-align: center;
+    }
+
+    .wifi-item:hover {
+      background-color: #21262d;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .form-input {
+      width: calc(100% - 20px);
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      box-sizing: border-box;
+      background-color: #161b22;
+      color: #c9d1d9;
+      transition: border-color 0.3s ease;
+    }
+
+    .form-input:focus {
+      border-color: #58a6ff;
+    }
+
+    .submit-button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background-color: #2ea043;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .submit-button:hover {
+      background-color: #279f42;
+    }
+
+    .form-container {
+      padding: 20px;
+      background-color: #161b22;
+      border-radius: 6px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #8b949e;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="liebiao" class="wifi-container">
+  </div>
+
+  <form action="/wifi/config" method="POST" id="passwordForm" class="form-container hidden">
+    <label for="ssid" id="WifiName">WiFi名称:</label>
+    <input type="text" id="ssid" placeholder="请输入WiFi名称" name="ssid" class="form-input" required>
+    <label for="password" id="WifiPassword">WiFi密码:</label>
+    <input type="password" id="password" placeholder="请输入WiFi密码" name="password" class="form-input" required>
+
+    <!-- 数字选择区域 -->
+    <div id="numberSelect">
+      <label>选择被覆盖WiFi:</label>
+      <div class="number-select" id="StoreWifi">
+      </div>
+    </div>
+
+    <button type="button" id="ButtonJoin" class="submit-button" onclick="handleConnect()">连接</button>
+    <button type="button" id="ButtonReturn" class="submit-button" onclick="ReturnInterface()">返回</button>
+  </form>
+</body>
+<script>
+  // 获取储存了那些wifi
+  function GetStoreWifi() {
+    fetch('/GetStoreWifi')
+      .then(response => response.json())
+      .then(files => {
+        const list = files.map(file => `
+                        <div class="number-option">
+                          <input type="radio" id="num${file.size}" name="number" value="${file.size}" onchange="handleNumberSelect()">
+                          <label for="num${file.size}">${file.name}</label>
+                        </div>
+                    `).join('');
+        document.getElementById('StoreWifi').innerHTML = list;
+      });
+  }
+
+  // 获取附近有什么WIFI
+  function GetWifiInfo() {
+    fetch('/GetWifiInfo')
+      .then(response => response.json())
+      .then(files => {
+        const list = files.map(file => `
+                        <div class="wifi-item" onclick="showPasswordInput(this)">${file.name}</div>
+                    `).join('');
+        document.getElementById('liebiao').innerHTML = list;
+      });
+  }
+
+  // 进入密码填写界面
+  function showPasswordInput(element) {
+    document.getElementById("liebiao").classList.add("hidden");
+    document.getElementById("passwordForm").classList.remove("hidden");
+    document.getElementById("ssid").value = element.textContent;
+  }
+
+  // 返回WIFI扫描界面
+  function ReturnInterface() {
+    document.getElementById("liebiao").classList.remove("hidden");
+    document.getElementById("passwordForm").classList.add("hidden");
+    // 重置表单状态
+    document.getElementById("numberSelect").classList.remove("show");
+    document.querySelectorAll('input[name="number"]').forEach(radio => radio.checked = false);
+  }
+
+  // 显示选择被覆盖WIFI信息
+  function handleConnect() {
+    const ssid = document.getElementById("ssid").value;
+    const password = document.getElementById("password").value;
+
+    if (!ssid || !password) {
+      alert("请先填写WiFi名称和密码");
+      return;
+    }
+
+    // 显示数字选择区域
+    document.getElementById("numberSelect").classList.add("show");
+
+    // 隐藏不需要的内容
+    document.getElementById("ssid").classList.add("hidden");
+    document.getElementById("password").classList.add("hidden");
+    document.getElementById("ButtonJoin").classList.add("hidden");
+    document.getElementById("ButtonReturn").classList.add("hidden");
+    document.getElementById("WifiName").classList.add("hidden");
+    document.getElementById("WifiPassword").classList.add("hidden");
+  }
+
+  // 发送表单
+  function handleNumberSelect() {
+    const selected = document.querySelector('input[name="number"]:checked');
+    if (selected) {
+      // 自动提交表单
+      document.getElementById("passwordForm").submit();
+    }
+  }
+
+  GetStoreWifi();
+  GetWifiInfo();
+</script>
+
 </html>
 )rawliteral";

@@ -81,6 +81,7 @@ OpenMeteoInfo GetOpenMeteo(unsigned int AttemptCount) {
 95~99 雷雨
 */
 String GetMeteoToString(unsigned int WeatherCode) {
+  // "☃☁☂☀ ☀☁☂☃☔☼⚡⛆⛅⛇⛈"
   switch (WeatherCode) {
     case 0: return "晴天";
     case 1: return "晴朗";

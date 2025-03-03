@@ -686,6 +686,7 @@ void Paint_DrawImage(const unsigned char *image_buffer, UWORD xStart, UWORD ySta
 
 File WordInfoFile; // 字体信息文件
 File WordImgFile;  // 字体位图文件
+unsigned int WordInfoFileSize;
 unsigned int CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename)
 {
     // 字体不存在
@@ -702,13 +703,12 @@ unsigned int CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename)
     myFont = FontInfo[filename]; // 获取字体信息
 #else
     WordInfoFile.seek(0);                                  // 回到文件开头
-    WordInfoFile.seek(sizeof(FontInformation) * filename); // 偏移到字体信息位置
+    WordInfoFile.seek((sizeof(FontInformation) * filename) + (WordInfoFileSize * sizeof(FontRange)) + 4); // 偏移到字体信息位置
     for (int i = 0; i < sizeof(FontInformation); ++i)
     {
         ((char *)&myFont)[i] = WordInfoFile.read(); // 逐一字节读取数据
     }
 #endif
-
     WordImgFile.seek(0);                // 回到文件开头
     WordImgFile.seek(myFont.Deviation); // 偏移到位图数据开头
     // 计算位图大小（字节）
@@ -758,12 +758,23 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename, unsigned int bian
     unsigned int Deflection;   // 字体偏移
     unsigned char LineNum = 0; // 当前几行文字了（从零开始）
 
+    FontRange myRange[40];
+
 #if From_Bin == 0
     WordInfoFile = SPIFFS.open("/FontInfo.bin");
     if (!WordInfoFile)
     {
         Serial.println("Failed to open FontInfo for writing\n");
         return;
+    }
+    WordInfoFile.seek(0);                                  // 回到文件开头
+    for (int i = 0; i < 4; ++i)
+    {
+        ((char *)&WordInfoFileSize)[i] = WordInfoFile.read(); // 逐一字节读取数据
+    }
+    for (int i = 0; i < (WordInfoFileSize * sizeof(FontRange)); ++i)
+    {
+        ((char *)&myRange)[i] = WordInfoFile.read(); // 逐一字节读取数据
     }
 #endif
     WordImgFile = SPIFFS.open("/FontData.bin");
@@ -774,7 +785,7 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename, unsigned int bian
     }
     while (*p_text != 0)
     {
-        FontIndex = from_bytes(p_text); // 计算下一个字的索引值
+        FontIndex = from_bytes(p_text, myRange, WordInfoFileSize); // 计算下一个字的索引值
         p_text += fromDeviation;        // 移动到下一个字开头
         // 显示字,获取字体宽度（用于偏移下一个字的位置）
         Deflection = CN_UTF8_Show(PosY, PosX, FontIndex);

@@ -118,6 +118,16 @@
             color: #8b949e;
             font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
         }
+
+        /* 进度条动画 */
+        #progressBar {
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        /* 错误状态 */
+        .error-progress {
+            background-color: #da3633 !important;
+        }
     </style>
 </head>
 
@@ -137,6 +147,16 @@
                 <input type="file" id="fileInput">
             </label>
             <button onclick="uploadFile()">开始上传</button>
+            <div id="progressContainer" style="margin-top:15px; display:none;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:200px; height:8px; background:#30363d; border-radius:4px;">
+                        <div id="progressBar"
+                            style="width:0%; height:100%; background:#2ea043; border-radius:4px; transition:width 0.3s ease;">
+                        </div>
+                    </div>
+                    <span id="progressText">0%</span>
+                </div>
+            </div>
         </div>
 
         <div class="section">
@@ -177,26 +197,63 @@
                 });
         }
 
+        function handleUploadError() {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            progressBar.style.width = '100%';
+            progressBar.style.backgroundColor = '#da3633';
+            progressText.textContent = '上传失败!';
+            setTimeout(() => document.getElementById('progressContainer').style.display = 'none', 2000);
+        }
+
         // 文件上传逻辑
         function uploadFile() {
             const fileInput = document.getElementById('fileInput');
             if (!fileInput.files[0]) return alert('请先选择文件');
 
+            // 显示进度容器
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            progressContainer.style.display = 'block';
+
+            const xhr = new XMLHttpRequest();
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
 
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            }).then(response => {
-                if (response.ok) {
+            // 进度事件监听
+            xhr.upload.addEventListener('progress', function (e) {
+                if (e.lengthComputable) {
+                    const percent = (e.loaded / e.total * 100).toFixed(1);
+                    progressBar.style.width = percent + '%';
+                    progressText.textContent = percent + '%';
+                }
+            });
+
+            // 完成处理
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    progressBar.style.backgroundColor = '#2ea043';
+                    progressText.textContent = '上传完成!';
+                    setTimeout(() => progressContainer.style.display = 'none', 2000);
                     fileInput.value = '';
                     refreshFiles();
                     updateStorage();
-                    alert('✅ 上传成功');
+                } else {
+                    handleUploadError();
                 }
-            });
+            };
+
+            // 错误处理
+            xhr.onerror = function () {
+                handleUploadError();
+            };
+
+            xhr.open('POST', '/upload');
+            xhr.send(formData);
         }
+
+
 
         // 文件删除确认
         function deleteFile(filename) {
@@ -217,27 +274,27 @@
         function downloadFile(filename) {
             // 1. 创建隐藏的下载链接
             const link = document.createElement('a');
-            
+
             // 2. 构建下载请求地址
             link.href = `/download?file=${encodeURIComponent(filename)}`;
-            
+
             // 3. 设置下载属性（强制下载而非预览）
             link.download = filename;
-            
+
             // 4. 设置链接显示样式
             link.style.display = 'none';
-            
+
             // 5. 将链接添加到DOM树
             document.body.appendChild(link);
-            
+
             // 6. 模拟用户点击触发下载
             link.click();
-            
+
             // 7. 清理临时创建的DOM元素
             document.body.removeChild(link);
-            
+
             // 8. 错误处理（可选）
-            link.onerror = function() {
+            link.onerror = function () {
                 console.error('文件下载失败:', filename);
                 alert('下载失败，请检查文件名是否正确');
             }

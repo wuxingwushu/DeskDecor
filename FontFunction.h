@@ -1,6 +1,8 @@
 #ifndef __FontFunction_H
 #define __FontFunction_H
 
+#define From_Bin 0
+
 typedef struct FontInformation {
     unsigned int Deviation;
     unsigned char x;
@@ -15,6 +17,7 @@ typedef struct FontRange {
     unsigned short Deviation;
 };
 
+#if From_Bin
 const FontRange Range[] = {
 	{ 32, 127, 32 },
 	{ 8192, 8303, 8096 },
@@ -25,21 +28,31 @@ const FontRange Range[] = {
 	{ 19968, 40959, 12544 },
 	{ 63744, 64255, 35328 },
 	{ 65072, 65103, 36144 },
-	{ 65280, 65519, 36320 },
+	{ 65280, 65519, 36320 }
 };
+#endif
 
+#if From_Bin
 unsigned short from_Deviation(unsigned int bytes){
-  for(unsigned int i = 0; i < sizeof(Range) / sizeof(FontRange); ++i){
-    if((Range[i].Head <= bytes) && (bytes <=  Range[i].Tail)){
-      bytes -= Range[i].Deviation;
-      return bytes;
-    }
-  }
+	for(unsigned int i = 0; i < sizeof(Range) / sizeof(FontRange); ++i){
+#else
+unsigned short from_Deviation(unsigned int bytes, const FontRange* Range, unsigned int size){
+	for(unsigned int i = 0; i < size; ++i){
+#endif
+		if((Range[i].Head <= bytes) && (bytes <=  Range[i].Tail)){
+			bytes -= Range[i].Deviation;
+			return bytes;
+		}
+	}
   return 0xFFFF;
 }
 
 unsigned char fromDeviation = 0;
+#if From_Bin
 unsigned short from_bytes(const char* bytes) {
+#else
+unsigned short from_bytes(const char* bytes, const FontRange* Range, unsigned int size) {
+#endif
     unsigned int result;
 
     unsigned char c = bytes[0];  // 将有符号字节转换为无符号字节
@@ -93,11 +106,12 @@ unsigned short from_bytes(const char* bytes) {
         fromDeviation = 6;
         return 0xFFFF;
     }
-
-    return from_Deviation(result);
+#if From_Bin
+	return from_Deviation(result);
+#else
+	return from_Deviation(result, Range, size);
+#endif
 }
-
-#define From_Bin 0
 
 #if From_Bin
 const FontInformation FontInfo[] = {

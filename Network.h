@@ -26,14 +26,19 @@ NetworkCase ConnectWIFI();
 // 启动WebServer服务
 String WebServerFun();
 
-// 設置WIFI網頁
-void handleWifi(AsyncWebServerRequest *request);
+
+// 查询WIFI
+void GetWifiInfo(AsyncWebServerRequest *request);
+// 获取以储存WIFI
+void GetStoreWifi(AsyncWebServerRequest *request);
 // 处理WiFi配置提交
 void handleWifiConfig(AsyncWebServerRequest *request);
-// 設置界面
-void handleSet(AsyncWebServerRequest *request);
+
+// 獲取設置
+void GetSetInfo(AsyncWebServerRequest *request);
 // 处理WiFi配置提交
 void handleSetConfig(AsyncWebServerRequest *request);
+
 // 重启
 void handleRestart(AsyncWebServerRequest *request);
 
@@ -51,5 +56,7 @@ void FileUploadProcessing(AsyncWebServerRequest *request, String filename, size_
 
 extern const char *RootHtml; // 主页
 extern const char *FileHtml; // 文件
+extern const char *SetHtml; // 设置
+extern const char *WifiHtml; // Wifi
 
 #endif

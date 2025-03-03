@@ -1,5 +1,6 @@
 <!DOCTYPE HTML>
 <html>
+
 <head>
   <meta http-equiv="Content-Type" content="text/html; width=device-width, initial-scale=1.0,charset=utf-8" />
   <title>WiFi 配置界面</title>
@@ -9,6 +10,7 @@
       margin-top: 15px;
       display: none;
     }
+
     #numberSelect.show {
       display: block;
     }
@@ -135,41 +137,18 @@
 
 <body>
   <div id="liebiao" class="wifi-container">
-    <div class="wifi-item" onclick="showPasswordInput(this)">WiFi 123</div>
-    <div class="wifi-item" onclick="showPasswordInput(this)">WiFi 456</div>
-    <div class="wifi-item" onclick="showPasswordInput(this)">WiFi 789</div>
   </div>
-  
+
   <form action="/wifi/config" method="POST" id="passwordForm" class="form-container hidden">
     <label for="ssid" id="WifiName">WiFi名称:</label>
     <input type="text" id="ssid" placeholder="请输入WiFi名称" name="ssid" class="form-input" required>
     <label for="password" id="WifiPassword">WiFi密码:</label>
     <input type="password" id="password" placeholder="请输入WiFi密码" name="password" class="form-input" required>
-  
+
     <!-- 数字选择区域 -->
     <div id="numberSelect">
       <label>选择被覆盖WiFi:</label>
-      <div class="number-select">
-        <div class="number-option">
-          <input type="radio" id="num1" name="number" value="0" onchange="handleNumberSelect()">
-          <label for="num1">CoverObject0</label>
-        </div>
-        <div class="number-option">
-          <input type="radio" id="num2" name="number" value="1" onchange="handleNumberSelect()">
-          <label for="num2">CoverObject1</label>
-        </div>
-        <div class="number-option">
-          <input type="radio" id="num3" name="number" value="2" onchange="handleNumberSelect()">
-          <label for="num3">CoverObject2</label>
-        </div>
-        <div class="number-option">
-          <input type="radio" id="num4" name="number" value="3" onchange="handleNumberSelect()">
-          <label for="num4">CoverObject3</label>
-        </div>
-        <div class="number-option">
-          <input type="radio" id="num5" name="number" value="4" onchange="handleNumberSelect()">
-          <label for="num5">CoverObject4</label>
-        </div>
+      <div class="number-select" id="StoreWifi">
       </div>
     </div>
 
@@ -178,6 +157,33 @@
   </form>
 </body>
 <script>
+  // 获取储存了那些wifi
+  function GetStoreWifi() {
+    fetch('/GetStoreWifi')
+      .then(response => response.json())
+      .then(files => {
+        const list = files.map(file => `
+                        <div class="number-option">
+                          <input type="radio" id="num${file.size}" name="number" value="${file.size}" onchange="handleNumberSelect()">
+                          <label for="num${file.size}">${file.name}</label>
+                        </div>
+                    `).join('');
+        document.getElementById('StoreWifi').innerHTML = list;
+      });
+  }
+
+  // 获取附近有什么WIFI
+  function GetWifiInfo() {
+    fetch('/GetWifiInfo')
+      .then(response => response.json())
+      .then(files => {
+        const list = files.map(file => `
+                        <div class="wifi-item" onclick="showPasswordInput(this)">${file.name}</div>
+                    `).join('');
+        document.getElementById('liebiao').innerHTML = list;
+      });
+  }
+
   // 进入密码填写界面
   function showPasswordInput(element) {
     document.getElementById("liebiao").classList.add("hidden");
@@ -198,12 +204,12 @@
   function handleConnect() {
     const ssid = document.getElementById("ssid").value;
     const password = document.getElementById("password").value;
-    
+
     if (!ssid || !password) {
       alert("请先填写WiFi名称和密码");
       return;
     }
-    
+
     // 显示数字选择区域
     document.getElementById("numberSelect").classList.add("show");
 
@@ -224,5 +230,9 @@
       document.getElementById("passwordForm").submit();
     }
   }
+
+  GetStoreWifi();
+  GetWifiInfo();
 </script>
+
 </html>
