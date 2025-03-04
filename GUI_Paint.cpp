@@ -703,11 +703,8 @@ unsigned int CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename)
     myFont = FontInfo[filename]; // 获取字体信息
 #else
     WordInfoFile.seek(0);                                  // 回到文件开头
-    WordInfoFile.seek((sizeof(FontInformation) * filename) + (WordInfoFileSize * sizeof(FontRange)) + 4); // 偏移到字体信息位置
-    for (int i = 0; i < sizeof(FontInformation); ++i)
-    {
-        ((char *)&myFont)[i] = WordInfoFile.read(); // 逐一字节读取数据
-    }
+    WordInfoFile.seek((sizeof(FontInformation) * filename) + (WordInfoFileSize * sizeof(UnicodeRange)) + 4); // 偏移到字体信息位置
+    WordInfoFile.read(((unsigned char *)&myFont), sizeof(FontInformation));
 #endif
     WordImgFile.seek(0);                // 回到文件开头
     WordImgFile.seek(myFont.Deviation); // 偏移到位图数据开头
@@ -758,7 +755,7 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename, unsigned int bian
     unsigned int Deflection;   // 字体偏移
     unsigned char LineNum = 0; // 当前几行文字了（从零开始）
 
-    FontRange myRange[40];
+    UnicodeRange myRange[40];
 
 #if From_Bin == 0
     WordInfoFile = SPIFFS.open("/FontInfo.bin");
@@ -768,14 +765,8 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename, unsigned int bian
         return;
     }
     WordInfoFile.seek(0);                                  // 回到文件开头
-    for (int i = 0; i < 4; ++i)
-    {
-        ((char *)&WordInfoFileSize)[i] = WordInfoFile.read(); // 逐一字节读取数据
-    }
-    for (int i = 0; i < (WordInfoFileSize * sizeof(FontRange)); ++i)
-    {
-        ((char *)&myRange)[i] = WordInfoFile.read(); // 逐一字节读取数据
-    }
+    WordInfoFile.read(((unsigned char *)&WordInfoFileSize), 4);
+    WordInfoFile.read(((unsigned char *)myRange), (WordInfoFileSize * sizeof(UnicodeRange)));
 #endif
     WordImgFile = SPIFFS.open("/FontData.bin");
     if (!WordImgFile)

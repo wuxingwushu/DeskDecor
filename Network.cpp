@@ -11,8 +11,6 @@ AsyncWebServer server(80);
 
 NetworkCase ConnectWIFI()
 {
-  // 启用WiFi模块
-  WiFi.mode(WIFI_STA);
   // 初始化 12引脚口
   pinMode(12, INPUT_PULLUP);
   if (digitalRead(12) == 0)
@@ -33,11 +31,15 @@ NetworkCase ConnectWIFI()
   }
 
   unsigned int InldeWIFI = WifiDateMaxSize; // 当前选择WIFI 序号
-  int WiFiSize = WiFi.scanNetworks();       // 查询附近有什么WIFI
+  int WiFiSize = WiFi.scanComplete();       // 查询附近有什么WIFI
+  while(WiFiSize < 0){
+    WiFiSize = WiFi.scanComplete();
+    DEV_Delay_ms(100);
+  }
   String WifiName;                          // WIFI 名字（临时值）
   int RSSI = -10000;                        // 信号强度 （越大越强, 值为 0 是 RSSI 信号最强意思）
   Debug("查询到的WIFI:\n");
-  for (unsigned int i = 0; i < InldeWIFI; i++)
+  for (unsigned int i = 0; i < WiFiSize; ++i)
   {
     WifiName = WiFi.SSID(i);
     Debug(WifiName + "\n");
@@ -52,6 +54,7 @@ NetworkCase ConnectWIFI()
           // 选择这个WIFI
           InldeWIFI = k;
           RSSI = WiFi.RSSI(i);
+          break;
         }
       }
     }
@@ -158,17 +161,17 @@ String WebServerFun()
 }
 
 void GetWifiInfo(AsyncWebServerRequest *request){
-  Debug("扫描附近wifi\n");
+  //Debug("启动异步WiFi扫描\n");
+  
+  while(WiFi.scanComplete() < 0){};
+  int n = WiFi.scanComplete();
   String json = "[";
-  // 扫描附近WiFi
-  int n = WiFi.scanNetworks();
-  for (size_t i = 0; i < n; i++)
-  {
-    if (json != "[")
-      json += ',';
+  for (int i=0; i<n; ++i) {
+    if(i !=0) json += ',';
     json += "{\"name\":\"" + WiFi.SSID(i) + "\"}";
   }
   json += "]";
+  Debug(json + "\n");
   request->send(200, "application/json", json);
 }
 
@@ -221,7 +224,7 @@ void GetSetInfo(AsyncWebServerRequest *request){
   {
     TimeString += String(StartMinutes);
   }
-  json += "\"StartTime\":" + TimeString + ",";
+  json += "\"StartTime\":\"" + TimeString + "\",";
   TimeString = "";
   if (EndHours < 10)
   {
@@ -240,7 +243,7 @@ void GetSetInfo(AsyncWebServerRequest *request){
   {
     TimeString += String(EndMinutes);
   }
-  json += "\"EndTime\":" + TimeString + ",";
+  json += "\"EndTime\":\"" + TimeString + "\",";
   json += "\"Latitude\":" + String(LatitudeVal) + ",";
   json += "\"Longitude\":" + String(LongitudeVal) + ",";
   json += "\"BoolFlage\":" + String(APIPassage);
@@ -1017,11 +1020,11 @@ const char *SetHtml = R"rawliteral(
 
     <p>纬度:</p>
     <input type="number" id="Latitude" name="Latitude" class="form-input" value="22.9882" step="0.0001" min="-90"
-      max="90" placeholder="例如: 22.8892">
+      max="90" placeholder="例如: 22.9882">
 
     <p>经度:</p>
     <input type="number" id="Longitude" name="Longitude" class="form-input" value="114.3198" step="0.0001" min="-180"
-      max="180" placeholder="例如: 119.8562">
+      max="180" placeholder="例如: 114.3198">
 
     <p>功能开关:</p>
     <div class="switch-container">
@@ -1052,32 +1055,18 @@ const char *SetHtml = R"rawliteral(
       fetch('/GetSetInfo')
         .then(response => response.json())
         .then(data => {
-          alert("收到数据");
-          const TimeVal_ = data.TimeVal;
-          const StartTime_ = data.StartTime;
-          const EndTime_ = data.EndTime;
-          const Latitude_ = data.Latitude;
-          const Longitude_ = data.Longitude;
-          const BoolFlage_ = data.BoolFlage;
-
-          alert(TimeVal_);
-          alert(StartTime_);
-          alert(EndTime_);
-          alert(Latitude_);
-          alert(Longitude_);
-          alert(BoolFlage_);
-
-          document.getElementById('TimeVal').value = TimeVal_;
-          document.getElementById('StartTime').value = StartTime_;
-          document.getElementById('EndTime').value = EndTime_;
-          document.getElementById('Latitude').value = Latitude_;
-          document.getElementById('Longitude').value = Longitude_;
-          document.getElementById('BoolFlage').value = BoolFlage_;
+          document.getElementById('TimeVal').value = data.TimeVal;
+          document.getElementById('StartTime').value = data.StartTime;
+          document.getElementById('EndTime').value = data.EndTime;
+          document.getElementById('Latitude').value = data.Latitude;
+          document.getElementById('Longitude').value = data.Longitude;
+          document.getElementById('BoolFlage').value = data.BoolFlage;
 
           // 更新复选框状态
+          const flags = parseInt(data.BoolFlage, 10); // 确保转换为整数
           document.querySelectorAll('.bool-switch').forEach(checkbox => {
-            const bit = parseInt(checkbox.dataset.bit);
-            checkbox.checked = (BoolFlage & (1 << bit)) !== 0;
+            const bit = parseInt(checkbox.dataset.bit); // 获取data-bit值
+            checkbox.checked = (flags & (1 << bit)) !== 0; // 检查对应位是否设置
           });
         });
     }

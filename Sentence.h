@@ -14,6 +14,7 @@ typedef struct SentenceInfo
 {
   bool Success;// 是否成功
   const char* hitokoto;// 一言句子
+  unsigned int StrSize;
   const char* from;// 作者
 };
 

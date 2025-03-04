@@ -22,6 +22,9 @@ NetworkCase CaseInfo;
 void setup() {
   // 开始计算耗时
   unsigned int ConsumeTime = millis();
+  // 启用WiFi模块
+  WiFi.mode(WIFI_STA);
+  WiFi.scanNetworks(true);
   // 初始化 模块或设备
   DEV_Module_Init();
   Debug("开机\n");
@@ -78,6 +81,10 @@ void setup() {
     // 获取 一言内容 和 显示
     SentenceInfo InfoD = GetSentence();  // 获取 一言 内容
     if (InfoD.Success) {
+      if(InfoD.StrSize >= 120){
+        Debug("句子过长，再获取一次\n");
+        InfoD = GetSentence();
+      }
       Debug("Hitokoto OK!\n");
       CN_Show(40, 0, InfoD.hitokoto);
       CN_Show(0, 100, InfoD.from);
@@ -94,7 +101,6 @@ void setup() {
       Debug(String(WeatherInfo) + "\n");
       CN_Show(0, 76, WeatherInfo.c_str());
     } else {
-      Debug("Error: GetOpenMeteo()\n");
       CN_Show(0, 76, "天气罢工啦!");
     }
 

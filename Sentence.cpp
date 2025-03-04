@@ -6,10 +6,10 @@ DynamicJsonDocument doc(4000);
 
 SentenceInfo GetSentence(){
   unsigned char Passage;
+  SentenceInfo info;
   EEPROM.get(SentenceAPIPassageAddr, Passage);
   if(Passage <= 0){
     Debug("有没有搞错啊! API都没有选耶!");
-    SentenceInfo info;
     info.Success = true;
     info.hitokoto = "有没有搞错啊! API都没有选耶!";
     info.from = "开发者";
@@ -19,7 +19,7 @@ SentenceInfo GetSentence(){
     unsigned char API;
     EEPROM.get(SentenceAPIAddr, API);
     // 让他在合理范围内
-    if((API == 0) || (API >= 8)){
+    if((API == 0) || (API >= 4)){
       API = 1;
     }
     while(true){
@@ -36,7 +36,10 @@ SentenceInfo GetSentence(){
     EEPROM.commit();
     Passage = 1 << (API - 1);
   }
-  return GetSentence(SentenceAPI(Passage), 10);
+  info = GetSentence(SentenceAPI(Passage), 10);
+  info.StrSize = String(info.hitokoto).length();
+  return info;
+
 }
 
 SentenceInfo GetSentence(SentenceAPI API, unsigned int AttemptCount){
@@ -62,10 +65,11 @@ SentenceInfo GetHitokoto(unsigned int AttemptCount){
   // 多次尝试获取内容
   while(AttemptCount--){
     Debug('.');
-    DEV_Delay_ms(100);
     httpCode = http.GET();
     if(httpCode == HTTP_CODE_OK){
       break;
+    }else{
+      DEV_Delay_ms(100);
     }
   }
   Debug('\n');
@@ -89,8 +93,8 @@ SentenceInfo GetHitokoto(unsigned int AttemptCount){
     Debug(HInfo.from);
     Debug("\n");
   } else {
-    HInfo.Success = true;// 虽然获取内容失败了，但还是现实固定内容
-    HInfo.hitokoto = "一言获取内容失败！";
+    HInfo.Success = true;// 虽然获取内容失败了，但还是显示固定内容
+    HInfo.hitokoto = "\"一言\"获取内容失败！";
     HInfo.from = "开发者";
     Debug("HTTP Hitokoto failed\n");
   }
@@ -108,10 +112,11 @@ SentenceInfo GetONE(unsigned int AttemptCount){
   // 多次尝试获取内容
   while(AttemptCount--){
     Debug('.');
-    DEV_Delay_ms(100);
     httpCode = http.GET();
     if(httpCode == HTTP_CODE_OK){
       break;
+    }else{
+      DEV_Delay_ms(100);
     }
   }
   Debug('\n');
@@ -134,8 +139,8 @@ SentenceInfo GetONE(unsigned int AttemptCount){
     Debug(OInfo.from);
     Debug("\n");
   } else {
-    OInfo.Success = true;// 虽然获取内容失败了，但还是现实固定内容
-    OInfo.hitokoto = "ONE获取内容失败！";
+    OInfo.Success = true;// 虽然获取内容失败了，但还是显示固定内容
+    OInfo.hitokoto = "\"ONE\"获取内容失败！";
     OInfo.from = "开发者";
     Debug("HTTP ONE failed\n");
   }
@@ -152,10 +157,11 @@ SentenceInfo GetGreenTangerine(unsigned int AttemptCount){
   // 多次尝试获取内容
   while(AttemptCount--){
     Debug('.');
-    DEV_Delay_ms(100);
     httpCode = http.GET();
     if(httpCode == HTTP_CODE_OK){
       break;
+    }else{
+      DEV_Delay_ms(100);
     }
   }
   Debug('\n');
@@ -178,8 +184,8 @@ SentenceInfo GetGreenTangerine(unsigned int AttemptCount){
     Debug(QInfo.from);
     Debug("\n");
   } else {
-    QInfo.Success = true;// 虽然获取内容失败了，但还是现实固定内容
-    QInfo.hitokoto = "青桔获取内容失败！";
+    QInfo.Success = true;// 虽然获取内容失败了，但还是显示固定内容
+    QInfo.hitokoto = "\"青桔\"获取内容失败！";
     QInfo.from = "开发者";
     Debug("HTTP GetGreenTangerine failed\n");
   }

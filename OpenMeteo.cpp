@@ -36,10 +36,11 @@ OpenMeteoInfo GetOpenMeteo(unsigned int AttemptCount) {
   int httpCode;
   while(AttemptCount--){
     Debug('.');
-    DEV_Delay_ms(100);
     httpCode = http.GET();
     if(httpCode == HTTP_CODE_OK){
       break;
+    }else{
+      DEV_Delay_ms(100);
     }
   }
   Debug('\n');

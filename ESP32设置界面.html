@@ -92,11 +92,11 @@
 
     <p>纬度:</p>
     <input type="number" id="Latitude" name="Latitude" class="form-input" value="22.9882" step="0.0001" min="-90"
-      max="90" placeholder="例如: 22.8892">
+      max="90" placeholder="例如: 22.9882">
 
     <p>经度:</p>
     <input type="number" id="Longitude" name="Longitude" class="form-input" value="114.3198" step="0.0001" min="-180"
-      max="180" placeholder="例如: 119.8562">
+      max="180" placeholder="例如: 114.3198">
 
     <p>功能开关:</p>
     <div class="switch-container">
@@ -127,32 +127,18 @@
       fetch('/GetSetInfo')
         .then(response => response.json())
         .then(data => {
-          alert("收到数据");
-          const TimeVal_ = data.TimeVal;
-          const StartTime_ = data.StartTime;
-          const EndTime_ = data.EndTime;
-          const Latitude_ = data.Latitude;
-          const Longitude_ = data.Longitude;
-          const BoolFlage_ = data.BoolFlage;
-
-          alert(TimeVal_);
-          alert(StartTime_);
-          alert(EndTime_);
-          alert(Latitude_);
-          alert(Longitude_);
-          alert(BoolFlage_);
-
-          document.getElementById('TimeVal').value = TimeVal_;
-          document.getElementById('StartTime').value = StartTime_;
-          document.getElementById('EndTime').value = EndTime_;
-          document.getElementById('Latitude').value = Latitude_;
-          document.getElementById('Longitude').value = Longitude_;
-          document.getElementById('BoolFlage').value = BoolFlage_;
+          document.getElementById('TimeVal').value = data.TimeVal;
+          document.getElementById('StartTime').value = data.StartTime;
+          document.getElementById('EndTime').value = data.EndTime;
+          document.getElementById('Latitude').value = data.Latitude;
+          document.getElementById('Longitude').value = data.Longitude;
+          document.getElementById('BoolFlage').value = data.BoolFlage;
 
           // 更新复选框状态
+          const flags = parseInt(data.BoolFlage, 10); // 确保转换为整数
           document.querySelectorAll('.bool-switch').forEach(checkbox => {
-            const bit = parseInt(checkbox.dataset.bit);
-            checkbox.checked = (BoolFlage & (1 << bit)) !== 0;
+            const bit = parseInt(checkbox.dataset.bit); // 获取data-bit值
+            checkbox.checked = (flags & (1 << bit)) !== 0; // 检查对应位是否设置
           });
         });
     }
