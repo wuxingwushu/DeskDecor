@@ -4,12 +4,32 @@ WiFiUDP ntpUDP;
 NTPClient TimeNTPClient(ntpUDP, "ntp.aliyun.com", 60 * 60 * 8, 60 * 1000);
 unsigned char TimeH, TimeM, TimeS;
 
-void RequestPresentTime() {
+bool RequestPresentTime() {
+  char TimeZone;
+  EEPROM.get(TimeZoneAddr, TimeZone);
+  TimeNTPClient.setTimeOffset(60 * 60 * int(TimeZone));
   TimeNTPClient.begin();
-  TimeNTPClient.update();
+  unsigned int Count = 3;
+  while(Count--){
+    if(TimeNTPClient.update()){
+      return true;
+    }
+    DEV_Delay_ms(100);
+  }
+  return false;
 }
 
 PresentTimeInfo GetDelayTime() {
+  // 获取当前时间
+  TimeH = TimeNTPClient.getHours();    // 获取时
+  TimeM = TimeNTPClient.getMinutes();  // 获取分
+  TimeS = TimeNTPClient.getSeconds();   // 获取秒
+
+  return GetDelayTime(TimeH, TimeM);
+}
+
+
+PresentTimeInfo GetDelayTime(unsigned char H, unsigned char M){
   PresentTimeInfo DelayTime;
   DelayTime.Success = false;
   DelayTime.PresentStr = "";
@@ -20,11 +40,6 @@ PresentTimeInfo GetDelayTime() {
   EEPROM.get(EndTimeHoursAddr, EndHours);          // 获取结束 时
   EEPROM.get(EndTimeMinutesAddr, EndMinutes);      // 获取结束 分
 
-  // 获取当前时间
-  TimeH = TimeNTPClient.getHours();    // 获取时
-  TimeM = TimeNTPClient.getMinutes();  // 获取分
-  TimeS = TimeNTPClient.getSeconds();   // 获取秒
-
   // 开始时间 和 结束时间 相同 代表不停止工作
   if((StartHours == EndHours) && (StartMinutes == EndMinutes)){
     return DelayTime;
@@ -33,7 +48,7 @@ PresentTimeInfo GetDelayTime() {
   // 转换为分钟数
   unsigned int StartTotal = StartHours * 60 + StartMinutes;// 开始时间（分为单位）
   unsigned int EndTotal = EndHours * 60 + EndMinutes;// 结束时间（分为单位）
-  unsigned int TimeTotal = TimeH * 60 + TimeM;// 当前时间（分为单位）
+  unsigned int TimeTotal = H * 60 + M;// 当前时间（分为单位）
   unsigned char DormantWork = 0;// 是否工作
 
   if(StartTotal < EndTotal){// 工作时间 非跨天情况
@@ -55,6 +70,7 @@ PresentTimeInfo GetDelayTime() {
   }else if(DormantWork == 2){// 休眠时间不跨天情况
     DelayTime.PresentTime = StartTotal - TimeTotal;
   }
+  --DelayTime.PresentTime;
 
   // 是否在休眠时间范围内
   if (DormantWork != 0) {

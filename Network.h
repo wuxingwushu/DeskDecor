@@ -15,7 +15,8 @@ typedef enum
 {
     Network_Not = 1, // 没网络
     Network_Ok = 2,  // 有网络
-    Network_Wed = 3  // 启动Wed服务
+    Network_Wed = 3,  // 启动Wed服务
+    LowScanMode = 4  // 低频扫描模式
 } NetworkCase;
 
 extern AsyncWebServer server;

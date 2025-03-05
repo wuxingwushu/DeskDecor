@@ -21,10 +21,8 @@ NetworkCase CaseInfo;
 
 void setup() {
   // 开始计算耗时
+  unsigned int WorkConsumeTime = millis();
   unsigned int ConsumeTime = millis();
-  // 启用WiFi模块
-  WiFi.mode(WIFI_STA);
-  WiFi.scanNetworks(true);
   // 初始化 模块或设备
   DEV_Module_Init();
   Debug("开机\n");
@@ -64,6 +62,7 @@ void setup() {
 #endif
   DEV_Delay_ms(10);
 
+  bool TimeUpDateBool = false;
   unsigned short DelayTime;               // 延迟时间（分）
   EEPROM.get(SleepValueAddr, DelayTime);  // 獲取一言刷新間隔時間（分）
   CaseInfo = ConnectWIFI();               // 连接wifi
@@ -105,17 +104,19 @@ void setup() {
     }
 
     // 获取时间
-    RequestPresentTime();
-    ConsumeTime = millis();
-    PresentTimeInfo InfoPT = GetDelayTime();  // 时间信息
-    if (InfoPT.Success) {
-      DelayTime = InfoPT.PresentTime;
-      CN_Show(125, 76, InfoPT.PresentStr.c_str());
+    TimeUpDateBool = RequestPresentTime();
+    if(TimeUpDateBool){
+      ConsumeTime = millis();
+      PresentTimeInfo InfoPT = GetDelayTime();  // 时间信息
+      if (InfoPT.Success) {
+        DelayTime = InfoPT.PresentTime;
+        CN_Show(125, 76, InfoPT.PresentStr.c_str());
+      }
     }
-
+    
     // 断开连接
     WiFi.disconnect(true);
-  } else  // wifi连接失败
+  } else if (CaseInfo == Network_Not) // wifi连接失败
   {
     // 从 EEPROM 中读取数据
     int Index;
@@ -127,10 +128,10 @@ void setup() {
     EEPROM.commit();
     // 显示图片
     Img_Show(EPD_2in13_V4_WIDTH, EPD_2in13_V4_HEIGHT, ImgD[Index]);
-
-    EEPROM.get(PresentTimeHoursAddr, TimeH);
-    EEPROM.get(PresentTimeMinutesAddr, TimeM);
-    EEPROM.get(PresentTimeSecondAddr, TimeS);
+  } else {
+    DelayTime = 60;
+    CN_Show(40, 0, "没有WiFi，我咋子工作嘛！");
+    CN_Show(0, 100, "开发者");
   }
 
   // 获取电压，显示电压
@@ -148,6 +149,17 @@ void setup() {
   }
 
   if (CaseInfo != Network_Wed) {
+    if (!TimeUpDateBool) {
+      EEPROM.get(PresentTimeHoursAddr, TimeH);
+      EEPROM.get(PresentTimeMinutesAddr, TimeM);
+      EEPROM.get(PresentTimeSecondAddr, TimeS);
+      PresentTimeInfo InfoPT = GetDelayTime(TimeH, TimeM);
+      if (InfoPT.Success) {
+        DelayTime = InfoPT.PresentTime;
+        CN_Show(125, 76, InfoPT.PresentStr.c_str());
+      }
+    }
+
     // 更新离线时间(计算下次唤醒的时间)
     ConsumeTime = millis() - ConsumeTime;
     Debug("耗时:" + String(ConsumeTime) + "ms\n");
@@ -177,6 +189,7 @@ void setup() {
     Debug("休眠时间：" + String(DelayTime) + "分\n");
     unsigned long long int SleepTime = ((unsigned long long int)DelayTime) * 60 * 1000000;
     Debug(String(SleepTime) + "us\n");
+    Debug("总耗时:" + String(millis() - WorkConsumeTime) + "ms\n");
     // 设置唤醒时间
     esp_sleep_enable_timer_wakeup(SleepTime);
     // 进入深度睡眠状态

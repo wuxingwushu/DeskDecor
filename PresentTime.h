@@ -17,9 +17,10 @@ typedef struct PresentTimeInfo {
 };
 
 // 有网时获取当前时间信息
-void RequestPresentTime();
+bool RequestPresentTime();
 
 // 根据当前时间返回对应事件信息
 PresentTimeInfo GetDelayTime();
+PresentTimeInfo GetDelayTime(unsigned char H, unsigned char M);
 
 #endif

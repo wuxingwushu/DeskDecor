@@ -13,84 +13,95 @@ NetworkCase ConnectWIFI()
 {
   // 初始化 12引脚口
   pinMode(12, INPUT_PULLUP);
+  // 启用WiFi模块
+  WiFi.mode(WIFI_STA);
   if (digitalRead(12) == 0)
   {
     Debug("Wed服务\n");
     return Network_Wed;
   }
 
-  /* 查询是否有以知WIFI */
+  unsigned char WifiIndex;
+  EEPROM.get(WiFiIndexAddr, WifiIndex);
+  if(WifiIndex >= WifiDateMaxSize){
+    /* 查询是否有以知WIFI */
 
-  // 获取所以WIFI名字
-  String WifiNameS[WifiDateMaxSize];
-  Debug("以知WIFI:\n");
-  for (unsigned int i = 0; i < WifiDateMaxSize; ++i)
-  {
-    WifiNameS[i] = readStringFromEEPROM(WifiNameAddr + (WiFiStrInterval * i));
-    Debug(WifiNameS[i] + "\n");
-  }
-
-  unsigned int InldeWIFI = WifiDateMaxSize; // 当前选择WIFI 序号
-  int WiFiSize = WiFi.scanComplete();       // 查询附近有什么WIFI
-  while(WiFiSize < 0){
-    WiFiSize = WiFi.scanComplete();
-    DEV_Delay_ms(100);
-  }
-  String WifiName;                          // WIFI 名字（临时值）
-  int RSSI = -10000;                        // 信号强度 （越大越强, 值为 0 是 RSSI 信号最强意思）
-  Debug("查询到的WIFI:\n");
-  for (unsigned int i = 0; i < WiFiSize; ++i)
-  {
-    WifiName = WiFi.SSID(i);
-    Debug(WifiName + "\n");
-    // 信号是否有所增加
-    if (WiFi.RSSI(i) > RSSI)
+    // 异步查询
+    WiFi.scanNetworks(true);
+    // 获取所以WIFI名字
+    String WifiNameS[WifiDateMaxSize];
+    Debug("以知WIFI:\n");
+    for (unsigned int i = 0; i < WifiDateMaxSize; ++i)
     {
-      // 查询是否有这个WIFI信息
-      for (unsigned int k = 0; k < WifiDateMaxSize; ++k)
-      {
-        if (WifiNameS[k] == WifiName)
-        {
-          // 选择这个WIFI
-          InldeWIFI = k;
-          RSSI = WiFi.RSSI(i);
-          break;
-        }
-      }
+      WifiNameS[i] = readStringFromEEPROM(WifiNameAddr + (WiFiStrInterval * i));
+      Debug(WifiNameS[i] + "\n");
     }
-  }
 
-  int Count = 0; // 尝试链接次数
-
-  if (InldeWIFI == WifiDateMaxSize)
-  { // 当没有查到对应WIFI时只判断是否进入Wed模式
-    Debug("不存在网络\n");
-    while (true)
-    {
+    String WifiName;                          // WIFI 名字（临时值）
+    int RSSI = -10000;                        // 信号强度 （越大越强, 值为 0 是 RSSI 信号最强意思）
+    Debug("查询到的WIFI:\n");
+    int WiFiSize = -1;       // 查询附近有什么WIFI
+    while(WiFiSize < 0){// 等待 WIFI 查询结束
+      WiFiSize = WiFi.scanComplete();
       if (digitalRead(12) == 0)
       {
         Debug("Wed服务\n");
         return Network_Wed;
       }
-      ++Count;
-      if (Count > 20)
-      { // 几次后没法连接判定为没有网络
-        return Network_Not;
-      }
       DEV_Delay_ms(100);
+    }
+    // 遍历扫描结果，是否有已知WIFI，且选择信号最强的
+    for (unsigned int i = 0; i < WiFiSize; ++i)
+    {
+      WifiName = WiFi.SSID(i);
+      Debug(WifiName + "\n");
+      // 信号是否有所增加
+      if (WiFi.RSSI(i) > RSSI)
+      {
+        // 查询是否有这个WIFI信息
+        for (unsigned int k = 0; k < WifiDateMaxSize; ++k)
+        {
+          if (WifiNameS[k] == WifiName)
+          {
+            // 选择这个WIFI
+            WifiIndex = k;
+            RSSI = WiFi.RSSI(i);
+          }
+        }
+      }
+    }
+
+    if (WifiIndex >= WifiDateMaxSize)
+    {
+      if(WifiIndex >= (WifiDateMaxSize + 10)){
+        Debug("低频扫描模式\n");
+        return LowScanMode;
+      }
+      // 当没有查到对应WIFI时只判断是否进入Wed模式
+      EEPROM.put(WiFiIndexAddr, WifiIndex);
+      EEPROM.commit();
+      Debug("不存在已知网络！\n");
+      return Network_Not;
+    }else{
+      EEPROM.put(WiFiIndexAddr, WifiIndex);
+      EEPROM.commit();
+      Debug("查询到WIFI: " + WifiNameS[WifiIndex]);
     }
   }
 
+
   /************************/
 
+
   // 读取字符串
-  String ssidConfig = WifiNameS[InldeWIFI];
-  String passwordConfig = readStringFromEEPROM(WifiPassAddr + (WiFiStrInterval * InldeWIFI));
+  String ssidConfig = readStringFromEEPROM(WifiNameAddr + (WiFiStrInterval * WifiIndex));
+  String passwordConfig = readStringFromEEPROM(WifiPassAddr + (WiFiStrInterval * WifiIndex));
   Debug("链接：" + ssidConfig + "," + passwordConfig + "\n");
 
   // 连接WiFi
   WiFi.begin(ssidConfig.c_str(), passwordConfig.c_str());
 
+  unsigned char Count = 0;
   while (WiFi.status() != WL_CONNECTED)
   {
     if (digitalRead(12) == 0)
@@ -101,6 +112,8 @@ NetworkCase ConnectWIFI()
     ++Count;
     if (Count > 50)
     { // 几次后没法连接判定为没有网络
+      EEPROM.put(WiFiIndexAddr, WifiDateMaxSize);
+      EEPROM.commit();
       Debug("\n连接失败\n");
       return Network_Not;
     }
@@ -118,6 +131,7 @@ String WebServerFun()
 
   // 设置ESP32为AP模式并启动，不使用密码
   WiFi.mode(WIFI_AP);
+  WiFi.scanNetworks(true);
   WiFi.softAP("一言墨水屏");
 
   // 响应页面
@@ -162,8 +176,7 @@ String WebServerFun()
 
 void GetWifiInfo(AsyncWebServerRequest *request){
   //Debug("启动异步WiFi扫描\n");
-  
-  while(WiFi.scanComplete() < 0){};
+  while(WiFi.scanComplete() < 0){DEV_Delay_ms(100);};
   int n = WiFi.scanComplete();
   String json = "[";
   for (int i=0; i<n; ++i) {
@@ -325,6 +338,10 @@ void handleSetConfig(AsyncWebServerRequest *request)
   Debug(LXXitude);
   Debug("\n");
   EEPROM.put(LongitudeAddr, LXXitude);
+  char timezone_offset = (int)(LXXitude / 15.0 + (fmod(LXXitude,15.0)>=7.5?1:0));
+  Debug((int)timezone_offset);
+  Debug("\n");
+  EEPROM.put(TimeZoneAddr, timezone_offset);
   HMData = BoolFlageConfig.toInt();
   Debug((int)HMData);
   Debug("\n");
@@ -339,9 +356,9 @@ void handleRestart(AsyncWebServerRequest *request)
   // 提示用户已提交WiFi信息
   String response = "<h1>重启中...</h1>";
   request->send(200, "text/html", response);
+  Debug("重启\n");
   DEV_Delay_ms(100);
   // 调用esp_restart() 函数进行重启
-  Debug("重启\n");
   esp_restart();
 }
 
