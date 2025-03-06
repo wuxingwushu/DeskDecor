@@ -54,6 +54,8 @@ void FileDeletion(AsyncWebServerRequest *request);
 void RetrieveStorageInformation(AsyncWebServerRequest *request);
 // 文件上传处理
 void FileUploadProcessing(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
+// 格式化
+void FormatFloppyDisk(AsyncWebServerRequest *request);
 
 extern const char *RootHtml; // 主页
 extern const char *FileHtml; // 文件

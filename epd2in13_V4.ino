@@ -85,11 +85,11 @@ void setup() {
         InfoD = GetSentence();
       }
       Debug("Hitokoto OK!\n");
-      CN_Show(40, 0, InfoD.hitokoto);
+      CN_Show(34, 0, InfoD.hitokoto);
       CN_Show(0, 100, InfoD.from);
     } else {
       Debug("Error: GetHitokoto()\n");
-      CN_Show(40, 0, "获取句子失败! 是没网还是BUG……");
+      CN_Show(34, 0, "获取句子失败! 是没网还是BUG……");
       CN_Show(0, 100, "开发者");
     }
 

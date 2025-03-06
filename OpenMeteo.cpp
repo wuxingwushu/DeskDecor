@@ -2,22 +2,6 @@
 #include "DEV_Config.h"
 #include "EepromString.h"
 
-const char *OpenMeteoHtml = "https://api.open-meteo.com/v1/forecast?latitude=22.9882&longitude=114.3198&current=temperature_2m,weather_code&timezone=Asia%2FSingapore&forecast_days=1";
-
-// 3*5 数字 0~9
-const unsigned char ShuPixData[10][2] = {
-  { 0xF6, 0xCE },  // 0
-  { 0x48, 0x24 },  // 1
-  { 0xE7, 0xCE },  // 2
-  { 0xE7, 0x9E },  // 3
-  { 0xB7, 0x92 },  // 4
-  { 0xF3, 0x9E },  // 5
-  { 0xF3, 0xDE },  // 6
-  { 0xE4, 0x92 },  // 7
-  { 0xF7, 0xDE },  // 8
-  { 0xF7, 0x9E }   // 9
-};
-
 OpenMeteoInfo GetOpenMeteo(unsigned int AttemptCount) {
   Debug("天气:\n");
   String OpenMeteoHtml1 = "https://api.open-meteo.com/v1/forecast?latitude=";

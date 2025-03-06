@@ -71,9 +71,9 @@ unsigned char fromDeviation = 0;
  * @param bytes UTF8字符串
  * @return 字符串第一个UTF8字的位图索引值 */
 #if From_Bin
-unsigned short from_bytes(const char* bytes) {
+unsigned short from_bytes(const char* bytes, bool deviation = true) {
 #else
-unsigned short from_bytes(const char* bytes, const UnicodeRange* mUnicodeRange, unsigned int size) {
+unsigned short from_bytes(const char* bytes, const UnicodeRange* mUnicodeRange, unsigned int size, bool deviation = true) {
 #endif
     unsigned int result;
 
@@ -129,12 +129,15 @@ unsigned short from_bytes(const char* bytes, const UnicodeRange* mUnicodeRange, 
         return 0xFFFF;
     }
 
-    
+    if (deviation) {
 #if From_Bin
-    return from_Deviation(result);
+    	return from_Deviation(result);
 #else
-    return from_Deviation(result, mUnicodeRange, size);
+    	return from_Deviation(result, mUnicodeRange, size);
 #endif
+	} else {
+		return result;
+	}
 }
 
 #if FromInfo_Bin

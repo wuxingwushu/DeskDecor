@@ -54,6 +54,10 @@
             transition: all 0.1s cubic-bezier(0.3, 0, 0.5, 1);
         }
 
+        .custom-file-info {
+            display: inline-block;
+        }
+
         .custom-file-upload:hover {
             background-color: #2d333b;
             border-color: #8b949e;
@@ -136,7 +140,7 @@
         <h1>ESP32 文件管理器</h1>
 
         <div class="section">
-            <h2>存储信息</h2>
+            <h2 class="custom-file-info">存储信息</h2><button onclick="FormatFloppyDisk()">格式化</button>
             <div id="storage">正在加载...</div>
         </div>
 
@@ -167,6 +171,38 @@
     </div>
 
     <script>
+        // 格式化
+        function FormatFloppyDisk() {
+            if (!confirm("⚠️ 即将格式化磁盘！\n\n所有文件将被永久删除且不可恢复！\n确定要继续吗？")) {
+                return;
+            }
+
+            // 显示操作状态
+            const storageDiv = document.getElementById('storage');
+            storageDiv.innerHTML = '<span style="color:#8b949e">正在格式化...</span>';
+
+            fetch('/FormatFloppyDisk', {
+                method: 'POST'
+            })
+                .then(response => {
+                    if (response.ok) {
+                        // 刷新界面数据
+                        refreshFiles();
+
+                        // 显示成功状态
+                        storageDiv.innerHTML = '<span style="color:#2ea043">格式化成功！</span>';
+                        setTimeout(() => updateStorage(), 2000); // 2秒后恢复显示
+                    } else {
+                        throw new Error(`HTTP 错误 ${response.status}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('格式化错误:', error);
+                    storageDiv.innerHTML = '<span style="color:#da3633">格式化失败！</span>';
+                    setTimeout(() => updateStorage(), 2000);
+                });
+        }
+
         // 存储信息更新
         function updateStorage() {
             fetch('/storage')

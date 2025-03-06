@@ -7,6 +7,7 @@ unsigned char TimeH, TimeM, TimeS;
 bool RequestPresentTime() {
   char TimeZone;
   EEPROM.get(TimeZoneAddr, TimeZone);
+  Debug("时区:" + String(int(TimeZone)) + "\n");
   TimeNTPClient.setTimeOffset(60 * 60 * int(TimeZone));
   TimeNTPClient.begin();
   unsigned int Count = 3;

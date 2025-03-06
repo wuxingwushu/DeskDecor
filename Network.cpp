@@ -3,27 +3,26 @@
 #include "DEV_Config.h"
 #include "Debug.h"
 #include <WiFi.h>
-#include <AsyncTCP.h> // ESP32 依赖
+#include <AsyncTCP.h>  // ESP32 依赖
 #include <SPIFFS.h>
+#include <ArduinoJson.h>
 
 // Wed服务器
 AsyncWebServer server(80);
 
-NetworkCase ConnectWIFI()
-{
+NetworkCase ConnectWIFI() {
   // 初始化 12引脚口
   pinMode(12, INPUT_PULLUP);
   // 启用WiFi模块
   WiFi.mode(WIFI_STA);
-  if (digitalRead(12) == 0)
-  {
+  if (digitalRead(12) == 0) {
     Debug("Wed服务\n");
     return Network_Wed;
   }
 
   unsigned char WifiIndex;
   EEPROM.get(WiFiIndexAddr, WifiIndex);
-  if(WifiIndex >= WifiDateMaxSize){
+  if (WifiIndex >= WifiDateMaxSize) {
     /* 查询是否有以知WIFI */
 
     // 异步查询
@@ -31,38 +30,32 @@ NetworkCase ConnectWIFI()
     // 获取所以WIFI名字
     String WifiNameS[WifiDateMaxSize];
     Debug("以知WIFI:\n");
-    for (unsigned int i = 0; i < WifiDateMaxSize; ++i)
-    {
+    for (unsigned int i = 0; i < WifiDateMaxSize; ++i) {
       WifiNameS[i] = readStringFromEEPROM(WifiNameAddr + (WiFiStrInterval * i));
       Debug(WifiNameS[i] + "\n");
     }
 
-    String WifiName;                          // WIFI 名字（临时值）
-    int RSSI = -10000;                        // 信号强度 （越大越强, 值为 0 是 RSSI 信号最强意思）
+    String WifiName;    // WIFI 名字（临时值）
+    int RSSI = -10000;  // 信号强度 （越大越强, 值为 0 是 RSSI 信号最强意思）
     Debug("查询到的WIFI:\n");
-    int WiFiSize = -1;       // 查询附近有什么WIFI
-    while(WiFiSize < 0){// 等待 WIFI 查询结束
+    int WiFiSize = -1;      // 查询附近有什么WIFI
+    while (WiFiSize < 0) {  // 等待 WIFI 查询结束
       WiFiSize = WiFi.scanComplete();
-      if (digitalRead(12) == 0)
-      {
+      if (digitalRead(12) == 0) {
         Debug("Wed服务\n");
         return Network_Wed;
       }
       DEV_Delay_ms(100);
     }
     // 遍历扫描结果，是否有已知WIFI，且选择信号最强的
-    for (unsigned int i = 0; i < WiFiSize; ++i)
-    {
+    for (unsigned int i = 0; i < WiFiSize; ++i) {
       WifiName = WiFi.SSID(i);
       Debug(WifiName + "\n");
       // 信号是否有所增加
-      if (WiFi.RSSI(i) > RSSI)
-      {
+      if (WiFi.RSSI(i) > RSSI) {
         // 查询是否有这个WIFI信息
-        for (unsigned int k = 0; k < WifiDateMaxSize; ++k)
-        {
-          if (WifiNameS[k] == WifiName)
-          {
+        for (unsigned int k = 0; k < WifiDateMaxSize; ++k) {
+          if (WifiNameS[k] == WifiName) {
             // 选择这个WIFI
             WifiIndex = k;
             RSSI = WiFi.RSSI(i);
@@ -71,9 +64,9 @@ NetworkCase ConnectWIFI()
       }
     }
 
-    if (WifiIndex >= WifiDateMaxSize)
-    {
-      if(WifiIndex >= (WifiDateMaxSize + 10)){
+    if (WifiIndex >= WifiDateMaxSize) {
+      ++WifiIndex;
+      if (WifiIndex >= (WifiDateMaxSize + 10)) {
         Debug("低频扫描模式\n");
         return LowScanMode;
       }
@@ -82,7 +75,7 @@ NetworkCase ConnectWIFI()
       EEPROM.commit();
       Debug("不存在已知网络！\n");
       return Network_Not;
-    }else{
+    } else {
       EEPROM.put(WiFiIndexAddr, WifiIndex);
       EEPROM.commit();
       Debug("查询到WIFI: " + WifiNameS[WifiIndex]);
@@ -102,17 +95,14 @@ NetworkCase ConnectWIFI()
   WiFi.begin(ssidConfig.c_str(), passwordConfig.c_str());
 
   unsigned char Count = 0;
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    if (digitalRead(12) == 0)
-    {
+  while (WiFi.status() != WL_CONNECTED) {
+    if (digitalRead(12) == 0) {
       Debug("Wed服务\n");
       return Network_Wed;
     }
     ++Count;
-    if (Count > 50)
-    { // 几次后没法连接判定为没有网络
-      EEPROM.put(WiFiIndexAddr, WifiDateMaxSize);
+    if (Count > 50) {  // 几次后没法连接判定为没有网络
+      EEPROM.put(WiFiIndexAddr, ((unsigned char)WifiDateMaxSize));
       EEPROM.commit();
       Debug("\n连接失败\n");
       return Network_Not;
@@ -124,8 +114,7 @@ NetworkCase ConnectWIFI()
   return Network_Ok;
 }
 
-String WebServerFun()
-{
+String WebServerFun() {
   // 确保首先断开了STA模式下的任何连接
   WiFi.disconnect(true);
 
@@ -135,17 +124,21 @@ String WebServerFun()
   WiFi.softAP("一言墨水屏");
 
   // 响应页面
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(200, "text/html", RootHtml); });
-  server.on("/ttf", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(200, "text/html", FileHtml); });
-  server.on("/wifi", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(200, "text/html", WifiHtml); });
-  server.on("/set", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(200, "text/html", SetHtml); });
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", RootHtml);
+  });
+  server.on("/ttf", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", FileHtml);
+  });
+  server.on("/wifi", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", WifiHtml);
+  });
+  server.on("/set", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", SetHtml);
+  });
 
   // 配置wifi信息
-  server.on("/wifi/config", HTTP_POST, handleWifiConfig); // 提交Wi-Fi信息进行连接
+  server.on("/wifi/config", HTTP_POST, handleWifiConfig);  // 提交Wi-Fi信息进行连接
   // 获取wifi信息
   server.on("/GetWifiInfo", HTTP_GET, GetWifiInfo);
   // 获取以储存WIFI
@@ -165,8 +158,13 @@ String WebServerFun()
   // 获取存储信息
   server.on("/storage", HTTP_GET, RetrieveStorageInformation);
   // 文件上传处理
-  server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request)
-            { request->send(200); }, FileUploadProcessing);
+  server.on(
+    "/upload", HTTP_POST, [](AsyncWebServerRequest *request) {
+      request->send(200);
+    },
+    FileUploadProcessing);
+  // 格式化
+  server.on("/FormatFloppyDisk", HTTP_POST, FormatFloppyDisk);
 
   // 启动Web服务器
   server.begin();
@@ -174,13 +172,13 @@ String WebServerFun()
   return WiFi.softAPIP().toString();
 }
 
-void GetWifiInfo(AsyncWebServerRequest *request){
+void GetWifiInfo(AsyncWebServerRequest *request) {
   //Debug("启动异步WiFi扫描\n");
-  while(WiFi.scanComplete() < 0){DEV_Delay_ms(100);};
+  while (WiFi.scanComplete() < 0) { DEV_Delay_ms(100); };
   int n = WiFi.scanComplete();
   String json = "[";
-  for (int i=0; i<n; ++i) {
-    if(i !=0) json += ',';
+  for (int i = 0; i < n; ++i) {
+    if (i != 0) json += ',';
     json += "{\"name\":\"" + WiFi.SSID(i) + "\"}";
   }
   json += "]";
@@ -188,11 +186,10 @@ void GetWifiInfo(AsyncWebServerRequest *request){
   request->send(200, "application/json", json);
 }
 
-void GetStoreWifi(AsyncWebServerRequest *request){
+void GetStoreWifi(AsyncWebServerRequest *request) {
   Debug("获取储存wifi\n");
   String json = "[";
-  for (unsigned int i = 0; i < WifiDateMaxSize; ++i)
-  {
+  for (unsigned int i = 0; i < WifiDateMaxSize; ++i) {
     if (json != "[")
       json += ',';
     json += "{\"name\":\"" + readStringFromEEPROM(WifiNameAddr + (WiFiStrInterval * i)) + "\",";
@@ -202,7 +199,23 @@ void GetStoreWifi(AsyncWebServerRequest *request){
   request->send(200, "application/json", json);
 }
 
-void GetSetInfo(AsyncWebServerRequest *request){
+String TimeStandard(unsigned char H, unsigned char M) {
+  String TimeString = "";
+  if (H < 10) {
+    TimeString += "0" + String(H);
+  } else {
+    TimeString += String(H);
+  }
+  TimeString += ":";
+  if (M < 10) {
+    TimeString += "0" + String(M);
+  } else {
+    TimeString += String(M);
+  }
+  return TimeString;
+}
+
+void GetSetInfo(AsyncWebServerRequest *request) {
   Debug("获取设置信息\n");
   unsigned short shu;
   EEPROM.get(SleepValueAddr, shu);
@@ -218,45 +231,8 @@ void GetSetInfo(AsyncWebServerRequest *request){
 
   String json = "{";
   json += "\"TimeVal\":" + String(shu) + ",";
-
-  String TimeString = "";
-  if (StartHours < 10)
-  {
-    TimeString += "0" + String(StartHours);
-  }
-  else
-  {
-    TimeString += String(StartHours);
-  }
-  TimeString += ":";
-  if (StartMinutes < 10)
-  {
-    TimeString += "0" + String(StartMinutes);
-  }
-  else
-  {
-    TimeString += String(StartMinutes);
-  }
-  json += "\"StartTime\":\"" + TimeString + "\",";
-  TimeString = "";
-  if (EndHours < 10)
-  {
-    TimeString += "0" + String(EndHours);
-  }
-  else
-  {
-    TimeString += String(EndHours);
-  }
-  TimeString += ":";
-  if (EndMinutes < 10)
-  {
-    TimeString += "0" + String(EndMinutes);
-  }
-  else
-  {
-    TimeString += String(EndMinutes);
-  }
-  json += "\"EndTime\":\"" + TimeString + "\",";
+  json += "\"StartTime\":\"" + TimeStandard(StartHours, StartMinutes) + "\",";
+  json += "\"EndTime\":\"" + TimeStandard(EndHours, EndMinutes) + "\",";
   json += "\"Latitude\":" + String(LatitudeVal) + ",";
   json += "\"Longitude\":" + String(LongitudeVal) + ",";
   json += "\"BoolFlage\":" + String(APIPassage);
@@ -266,19 +242,16 @@ void GetSetInfo(AsyncWebServerRequest *request){
 }
 
 // 处理WiFi配置提交
-void handleWifiConfig(AsyncWebServerRequest *request)
-{
+void handleWifiConfig(AsyncWebServerRequest *request) {
   unsigned int NumberConfig = request->arg("number").toInt();
   String ssidConfig = request->arg("ssid");
   String passwordConfig = request->arg("password");
 
-  if (ssidConfig.length() > (WiFiStrInterval / 2))
-  {
+  if (ssidConfig.length() > (WiFiStrInterval / 2)) {
     Debug("WiFi名字超出设定储存空间\n");
     goto handleWifiConfigEnd;
   }
-  if (passwordConfig.length() > (WiFiStrInterval / 2))
-  {
+  if (passwordConfig.length() > (WiFiStrInterval / 2)) {
     Debug("WiFi密码超出设定储存空间\n");
     goto handleWifiConfigEnd;
   }
@@ -295,8 +268,7 @@ handleWifiConfigEnd:
 }
 
 // 处理WiFi配置提交
-void handleSetConfig(AsyncWebServerRequest *request)
-{
+void handleSetConfig(AsyncWebServerRequest *request) {
   String timeConfig = request->arg("TimeVal");
   Debug(timeConfig + "\n");
   String StartTimeConfig = request->arg("StartTime");
@@ -338,7 +310,7 @@ void handleSetConfig(AsyncWebServerRequest *request)
   Debug(LXXitude);
   Debug("\n");
   EEPROM.put(LongitudeAddr, LXXitude);
-  char timezone_offset = (int)(LXXitude / 15.0 + (fmod(LXXitude,15.0)>=7.5?1:0));
+  char timezone_offset = (int)(LXXitude / 15.0 + (fmod(LXXitude, 15.0) >= 7.5 ? 1 : 0));
   Debug((int)timezone_offset);
   Debug("\n");
   EEPROM.put(TimeZoneAddr, timezone_offset);
@@ -346,13 +318,13 @@ void handleSetConfig(AsyncWebServerRequest *request)
   Debug((int)HMData);
   Debug("\n");
   EEPROM.put(SentenceAPIPassageAddr, HMData);
+  EEPROM.put(WiFiIndexAddr, char(WifiDateMaxSize));
   EEPROM.commit();
 
   request->send(200, "text/html", RootHtml);
 }
 
-void handleRestart(AsyncWebServerRequest *request)
-{
+void handleRestart(AsyncWebServerRequest *request) {
   // 提示用户已提交WiFi信息
   String response = "<h1>重启中...</h1>";
   request->send(200, "text/html", response);
@@ -363,14 +335,12 @@ void handleRestart(AsyncWebServerRequest *request)
 }
 
 // 获取文件列表
-void GetFileList(AsyncWebServerRequest *request)
-{
+void GetFileList(AsyncWebServerRequest *request) {
   Debug("获取文件列表\n");
   String json = "[";
   File root = SPIFFS.open("/", "r");
   File file = root.openNextFile();
-  while (file)
-  {
+  while (file) {
     if (json != "[")
       json += ',';
     json += "{\"name\":\"" + String(file.name()) + "\",";
@@ -387,8 +357,8 @@ void FileDownload(AsyncWebServerRequest *request) {
   String filename = "/" + request->getParam("file")->value();
   Debug("请求下载:" + filename + "\n");
 
-  File file = SPIFFS.open(filename.c_str()); // 打开芯片内存储的文件
-  if(!file){
+  File file = SPIFFS.open(filename.c_str());  // 打开芯片内存储的文件
+  if (!file) {
     Debug("文件未找到:" + filename + "\n");
     request->send(404, "text/plain", "文件未找到");
     return;
@@ -396,69 +366,60 @@ void FileDownload(AsyncWebServerRequest *request) {
 
   // 创建异步响应对象
   AsyncWebServerResponse *response = request->beginResponse(
-    "application/octet-stream", 
+    "application/octet-stream",
     file.size(),
     [filename](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
       static File fsFile = SPIFFS.open(filename.c_str(), "r");
-      
+
       if (!fsFile) {
         Debug("文件打开失败\n");
         return 0;
       }
-      
+
       if (index == 0) {
-        fsFile.seek(0); // 重置文件指针
+        fsFile.seek(0);  // 重置文件指针
       }
-      
+
       size_t bytesRead = fsFile.read(buffer, maxLen);
       Debug(String(bytesRead) + "\n");
-      
+
       if (bytesRead == 0) {
         fsFile.close();
         Debug("文件传输完成\n");
       }
-      
+
       return bytesRead;
-    }
-  );
+    });
 
   file.close();
 
   // 设置响应头（正确方法）
   response->addHeader("Content-Disposition", "attachment; filename=\"" + request->getParam("file")->value() + "\"");
   response->addHeader("Cache-Control", "no-cache");
-  
+
   // 发送响应
   request->send(response);
 }
 // 文件删除
-void FileDeletion(AsyncWebServerRequest *request)
-{
-  
-  if (request->hasParam("file"))
-  {
+void FileDeletion(AsyncWebServerRequest *request) {
+
+  if (request->hasParam("file")) {
     String filename = "/" + request->getParam("file")->value();
     Debug("删除：" + filename + "\n");
-    if (SPIFFS.remove(filename))
-    {
+    if (SPIFFS.remove(filename)) {
       Debug("以删除：" + filename + "\n");
       request->send(200, "text/plain", "File deleted");
-    }
-    else
-    {
+    } else {
       Debug("不存在：" + filename + "\n");
       request->send(500, "text/plain", "Delete failed");
     }
-  }
-  else
-  {
+  } else {
     Debug("删除错误！\n");
     request->send(400, "text/plain", "Bad request");
   }
 }
 // 获取存储信息
-void RetrieveStorageInformation(AsyncWebServerRequest *request)
-{
+void RetrieveStorageInformation(AsyncWebServerRequest *request) {
   Debug("获取储存信息\n");
   size_t total = SPIFFS.totalBytes();
   size_t used = SPIFFS.usedBytes();
@@ -471,26 +432,57 @@ void RetrieveStorageInformation(AsyncWebServerRequest *request)
   request->send(200, "application/json", json);
 }
 // 文件上传处理
-void FileUploadProcessing(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-{
-  if (!index)
-  {
+void FileUploadProcessing(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+  if (!index) {
     filename = "/" + filename;
     Debug("打开：" + filename + "\n");
     request->_tempFile = SPIFFS.open(filename, "w");
   }
-  if (request->_tempFile)
-  {
+  if (request->_tempFile) {
     request->_tempFile.write(data, len);
   }
-  if (final)
-  {
-    if (request->_tempFile)
-    {
+  if (final) {
+    if (request->_tempFile) {
       Debug("关闭：" + filename + "\n");
       request->_tempFile.close();
     }
   }
+}
+
+// 添加全局变量
+TaskHandle_t formatTaskHandle;
+
+// 独立格式化任务
+void formatTask(void *pvParams) {
+  AsyncWebServerRequest *request = (AsyncWebServerRequest*)pvParams;
+  disableLoopWDT();  // 仅需禁用Loop看门狗
+  
+  Debug("开始格式化...\n");
+  bool success = SPIFFS.format();
+  
+  if(success) {
+    Debug("格式化成功，尝试重新挂载\n");
+    request->send(200);
+  } else {
+    Debug("格式化失败\n");
+    request->send(500, "text/plain", "Format Failed");
+  }
+  
+  enableLoopWDT();
+  vTaskDelete(formatTaskHandle); // 删除当前任务
+}
+
+void FormatFloppyDisk(AsyncWebServerRequest *request) {
+  // 创建独立任务执行格式化
+  xTaskCreatePinnedToCore(
+    formatTask,        // 任务函数
+    "FormatTask",      // 任务名称
+    4096,              // 堆栈大小
+    (void*)request,    // 参数传递
+    2,                 // 优先级（高于loopTask）
+    &formatTaskHandle, // 任务句柄
+    1                  // 运行在Core1
+  );
 }
 
 const char *RootHtml = R"rawliteral(
@@ -687,6 +679,10 @@ const char *FileHtml = R"rawliteral(
             transition: all 0.1s cubic-bezier(0.3, 0, 0.5, 1);
         }
 
+        .custom-file-info {
+            display: inline-block;
+        }
+
         .custom-file-upload:hover {
             background-color: #2d333b;
             border-color: #8b949e;
@@ -769,7 +765,7 @@ const char *FileHtml = R"rawliteral(
         <h1>ESP32 文件管理器</h1>
 
         <div class="section">
-            <h2>存储信息</h2>
+            <h2 class="custom-file-info">存储信息</h2><button onclick="FormatFloppyDisk()">格式化</button>
             <div id="storage">正在加载...</div>
         </div>
 
@@ -800,6 +796,38 @@ const char *FileHtml = R"rawliteral(
     </div>
 
     <script>
+        // 格式化
+        function FormatFloppyDisk() {
+            if (!confirm("⚠️ 即将格式化磁盘！\n\n所有文件将被永久删除且不可恢复！\n确定要继续吗？")) {
+                return;
+            }
+
+            // 显示操作状态
+            const storageDiv = document.getElementById('storage');
+            storageDiv.innerHTML = '<span style="color:#8b949e">正在格式化...</span>';
+
+            fetch('/FormatFloppyDisk', {
+                method: 'POST'
+            })
+                .then(response => {
+                    if (response.ok) {
+                        // 刷新界面数据
+                        refreshFiles();
+
+                        // 显示成功状态
+                        storageDiv.innerHTML = '<span style="color:#2ea043">格式化成功！</span>';
+                        setTimeout(() => updateStorage(), 2000); // 2秒后恢复显示
+                    } else {
+                        throw new Error(`HTTP 错误 ${response.status}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('格式化错误:', error);
+                    storageDiv.innerHTML = '<span style="color:#da3633">格式化失败！</span>';
+                    setTimeout(() => updateStorage(), 2000);
+                });
+        }
+
         // 存储信息更新
         function updateStorage() {
             fetch('/storage')

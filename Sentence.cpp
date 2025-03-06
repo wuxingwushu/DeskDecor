@@ -8,7 +8,7 @@ SentenceInfo GetSentence(){
   unsigned char Passage;
   SentenceInfo info;
   EEPROM.get(SentenceAPIPassageAddr, Passage);
-  if(Passage <= 0){
+  if(Passage <= 1){
     Debug("有没有搞错啊! API都没有选耶!");
     info.Success = true;
     info.hitokoto = "有没有搞错啊! API都没有选耶!";
@@ -60,7 +60,7 @@ SentenceInfo GetHitokoto(unsigned int AttemptCount){
   Debug("一言:\n");
   // 执行HTTP请求
   HTTPClient http;
-  http.begin("https://v1.hitokoto.cn");//https://v1.hitokoto.cn/?lang=zh
+  http.begin("https://v1.hitokoto.cn"); // https://v1.hitokoto.cn/?lang=zh
   int httpCode;
   // 多次尝试获取内容
   while(AttemptCount--){

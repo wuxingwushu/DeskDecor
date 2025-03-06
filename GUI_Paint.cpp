@@ -787,7 +787,7 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename, unsigned int bian
         }
         else if (Deflection <= 5)
         {
-            Deflection += 4; // 符号加距离（但是部分英文会出问题，后面专门重写实现）
+            Deflection += 4; // 符号
         }
         PosX += (Deflection + 2);
         // 到屏幕边缘了，换行
@@ -797,12 +797,12 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename, unsigned int bian
             PosX = 0;
             ++LineNum;
             // 已经显示完整个屏幕了
-            if (LineNum >= 4)
+            if (LineNum >= 3)
             {
                 return;
             }
             // 不足显示字体的高度
-            if (PosY > 110)
+            if (PosY > 107)
             {
                 return;
             }
@@ -999,4 +999,20 @@ void RenovateScreen(UBYTE *Image)
         }
     }
     DEV_Digital_Write(EPD_CS_PIN, 1); // 关闭芯片
+}
+
+void ShowSexadecimalSystem(UWORD Xpoint, UWORD Ypoint, unsigned int code){
+    unsigned char Index, Num = 4;
+    unsigned short img;
+    while (--Num) {
+        Index = code & 0xF;
+        code >>= 4;
+        img = ShuPixData[Index];
+        for(unsigned char y = 0; y < 5; ++y) {
+            for(unsigned char x = 0; x < 3; ++x) {
+                Paint_SetPixel_Gai(x + Xpoint, y + Ypoint, (img & (0x0001 << (x * y))) > 0 ? WHITE : BLACK);
+            }
+        }
+        Xpoint += 4;
+    }
 }
