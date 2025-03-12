@@ -19,25 +19,36 @@
 // 当前网络状态
 NetworkCase CaseInfo;
 
+// 添加全局变量
+TaskHandle_t OpenMeteoTaskHandle;
+// 天气信息
+OpenMeteoInfo infoM;
+bool TaskHandleBool = true;
+void GetOpenMeteoTask(void* ptr) {
+  disableLoopWDT();  // 禁用Loop看门狗
+  infoM.Temperature = "";
+  infoM = GetOpenMeteo(10);
+  TaskHandleBool = false;
+  //UBaseType_t stack_remain = uxTaskGetStackHighWaterMark(OpenMeteoTaskHandle);
+  //Debug("[DEBUG] Stack剩余：" + String(stack_remain * sizeof(StackType_t)) + "字节\n");
+  enableLoopWDT();
+  feedLoopWDT();                     // Arduino专用喂狗函数
+  vTaskDelete(OpenMeteoTaskHandle);  // 删除当前任务
+}
+
 void setup() {
   // 开始计算耗时
   unsigned int WorkConsumeTime = millis();
   unsigned int ConsumeTime = millis();
   // 初始化 模块或设备
   DEV_Module_Init();
-  Debug("开机\n");
+  Serial.print("开机\n");
   // 初始化 EEPROM
   EEPROM.begin(EepromBufferSize);
   // 初始化 屏幕
   EPD_2in13_V4_Init();
   // 初始化屏幕内容
-  UBYTE *BlackImage;  // 显示缓冲
-  const UWORD Imagesize = ((EPD_2in13_V4_WIDTH % 8 == 0) ? (EPD_2in13_V4_WIDTH / 8) : (EPD_2in13_V4_WIDTH / 8 + 1)) * EPD_2in13_V4_HEIGHT;
-  if ((BlackImage = (UBYTE *)malloc(Imagesize)) == NULL) {
-    Debug("Failed to apply for black memory...\n");
-    while (1)
-      ;
-  }
+  UBYTE BlackImage[((EPD_2in13_V4_WIDTH % 8 == 0) ? (EPD_2in13_V4_WIDTH / 8) : (EPD_2in13_V4_WIDTH / 8 + 1)) * EPD_2in13_V4_HEIGHT];  // 显示缓冲
   Paint_NewImage(BlackImage, EPD_2in13_V4_WIDTH, EPD_2in13_V4_HEIGHT, 90, WHITE);
   Paint_Clear(WHITE);
   // 初始化 ADC电压检测
@@ -60,7 +71,6 @@ void setup() {
   writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 4), "70438480");
   ShowFileInfo();
 #endif
-  DEV_Delay_ms(10);
 
   bool TimeUpDateBool = false;
   unsigned short DelayTime;               // 延迟时间（分）
@@ -77,10 +87,24 @@ void setup() {
     Debug("Network_Wed\n");
   } else if (CaseInfo == Network_Ok)  // wifi连接成功
   {
+    // 创建独立任务执行格式化
+    /*
+    xTaskCreatePinnedToCore(
+      GetOpenMeteoTask,      // 任务函数
+      "OpenMeteoTask",       // 任务名称
+      8192 * 5,              // 堆栈大小
+      (void*)NULL,           // 参数传递
+      2,                     // 优先级（高于loopTask）
+      &OpenMeteoTaskHandle,  // 任务句柄
+      1                      // 运行在Core1
+    );*/
+
+
+
     // 获取 一言内容 和 显示
     SentenceInfo InfoD = GetSentence();  // 获取 一言 内容
     if (InfoD.Success) {
-      if(InfoD.StrSize >= 120){
+      if (InfoD.StrSize >= 120) {
         Debug("句子过长，再获取一次\n");
         InfoD = GetSentence();
       }
@@ -94,6 +118,7 @@ void setup() {
     }
 
     // 天气信息
+    /**/
     OpenMeteoInfo infoM = GetOpenMeteo();
     if (infoM.Success) {
       String WeatherInfo = GetMeteoToString(infoM.Weather) + "," + infoM.Temperature;
@@ -102,10 +127,11 @@ void setup() {
     } else {
       CN_Show(0, 76, "天气罢工啦!");
     }
+    
 
     // 获取时间
     TimeUpDateBool = RequestPresentTime();
-    if(TimeUpDateBool){
+    if (TimeUpDateBool) {
       ConsumeTime = millis();
       PresentTimeInfo InfoPT = GetDelayTime();  // 时间信息
       if (InfoPT.Success) {
@@ -113,10 +139,10 @@ void setup() {
         CN_Show(125, 76, InfoPT.PresentStr.c_str());
       }
     }
-    
+
     // 断开连接
-    WiFi.disconnect(true);
-  } else if (CaseInfo == Network_Not) // wifi连接失败
+    //WiFi.disconnect(true);
+  } else if (CaseInfo == Network_Not)  // wifi连接失败
   {
     // 从 EEPROM 中读取数据
     int Index;
@@ -125,12 +151,11 @@ void setup() {
     if (Index >= 8)
       Index = 0;
     EEPROM.put(ImgIndexAddr, Index);  // 存储
-    EEPROM.commit();
     // 显示图片
     Img_Show(EPD_2in13_V4_WIDTH, EPD_2in13_V4_HEIGHT, ImgD[Index]);
   } else {
     DelayTime = 60;
-    CN_Show(40, 0, "没有WiFi，我咋子工作嘛！");
+    CN_Show(34, 0, "没有WiFi，我咋子工作嘛！");
     CN_Show(0, 100, "开发者");
   }
 
@@ -140,8 +165,17 @@ void setup() {
     Power = EPD_2in13_V4_HEIGHT;
   Debug("电量长度：" + String(Power) + "\n");
   for (int i = 0; i < Power; ++i)
-    Paint_SetPixel(i, 121, BLACK);
-
+    Paint_SetPixel_Gai(i, 121, BLACK);
+  /*
+  while (TaskHandleBool) { DEV_Delay_ms(5); };
+  feedLoopWDT();  // Arduino专用喂狗函数
+  if (infoM.Success) {
+    String WeatherInfo = GetMeteoToString(infoM.Weather) + "," + infoM.Temperature + "\0";
+    Debug(WeatherInfo + "\n");
+    CN_Show(0, 76, WeatherInfo.c_str());
+  } else {
+    CN_Show(0, 76, "天气罢工啦!");
+  }*/
   // 刷新屏幕显示内容
   for (int i = 0; i < 5; ++i) {
     RenovateScreen(BlackImage);
@@ -156,6 +190,7 @@ void setup() {
       PresentTimeInfo InfoPT = GetDelayTime(TimeH, TimeM);
       if (InfoPT.Success) {
         DelayTime = InfoPT.PresentTime;
+        Debug("得到休眠时间\n");
         CN_Show(125, 76, InfoPT.PresentStr.c_str());
       }
     }
@@ -189,7 +224,7 @@ void setup() {
     Debug("休眠时间：" + String(DelayTime) + "分\n");
     unsigned long long int SleepTime = ((unsigned long long int)DelayTime) * 60 * 1000000;
     Debug(String(SleepTime) + "us\n");
-    Debug("总耗时:" + String(millis() - WorkConsumeTime) + "ms\n");
+    Serial.print("总耗时:" + String(millis() - WorkConsumeTime) + "ms\n");
     // 设置唤醒时间
     esp_sleep_enable_timer_wakeup(SleepTime);
     // 进入深度睡眠状态

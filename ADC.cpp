@@ -22,7 +22,7 @@ float ReadADC(){
   uint32_t adc_reading = 0;
   for (int i = 0; i < NO_OF_SAMPLES; i++) {
     adc_reading += adc1_get_raw((adc1_channel_t) ADC_PIN);
-    delay(10);
+    delay(5);
   }
 
   adc_reading /= NO_OF_SAMPLES;

@@ -771,6 +771,9 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename, unsigned int bian
     WordImgFile = SPIFFS.open("/FontData.bin");
     if (!WordImgFile)
     {
+#if From_Bin
+        WordInfoFile.close();
+#endif 
         Serial.println("Failed to open FontData for writing\n");
         return;
     }
@@ -799,12 +802,12 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename, unsigned int bian
             // 已经显示完整个屏幕了
             if (LineNum >= 3)
             {
-                return;
+                break;
             }
             // 不足显示字体的高度
             if (PosY > 107)
             {
-                return;
+                break;
             }
         }
     }

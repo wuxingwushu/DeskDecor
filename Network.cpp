@@ -1046,6 +1046,27 @@ const char *SetHtml = R"rawliteral(
     .switch-label input {
       margin-right: 8px;
     }
+
+    .geo-button {
+      width: 100%;
+      padding: 8px;
+      margin: 10px 0;
+      background-color: #2ea043;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      font-size: 0.9em;
+    }
+
+    .geo-button:hover {
+      background-color: #279f42;
+    }
+
+    .geo-container {
+      margin: 15px 0;
+    }
   </style>
 </head>
 
@@ -1062,6 +1083,11 @@ const char *SetHtml = R"rawliteral(
     <p>结束时间:</p>
     <input type="time" id="EndTime" name="EndTime" class="form-input" required value="17:30"
       pattern="[0-2][0-9]:[0-5][0-9]" step="60" placeholder="例如: 17:30">
+
+    <div class="geo-container">
+      <p>位置信息:</p>
+      <button type="button" class="geo-button" onclick="getLocation()">自动获取当前位置</button>
+    </div>
 
     <p>纬度:</p>
     <input type="number" id="Latitude" name="Latitude" class="form-input" value="22.9882" step="0.0001" min="-90"
@@ -1169,6 +1195,44 @@ const char *SetHtml = R"rawliteral(
         }
       });
     });
+
+    // 新增定位功能
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          position => {
+            const lat = position.coords.latitude.toFixed(4);
+            const lng = position.coords.longitude.toFixed(4);
+            document.getElementById('Latitude').value = lat;
+            document.getElementById('Longitude').value = lng;
+          },
+          error => {
+            let message = "无法获取位置信息：";
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                message += "用户拒绝了位置请求";
+                break;
+              case error.POSITION_UNAVAILABLE:
+                message += "位置信息不可用";
+                break;
+              case error.TIMEOUT:
+                message += "获取位置超时";
+                break;
+              default:
+                message += "未知错误";
+            }
+            alert(message);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+          }
+        );
+      } else {
+        alert("您的浏览器不支持地理定位功能");
+      }
+    }
 
     updateStorage();
   </script>

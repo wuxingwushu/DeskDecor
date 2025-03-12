@@ -35,7 +35,7 @@ OpenMeteoInfo GetOpenMeteo(unsigned int AttemptCount) {
     Debug(payload + "\n");
 
     // 解析JSON
-    DynamicJsonDocument doc(4000);
+    DynamicJsonDocument doc(2000);
     deserializeJson(doc, payload);
 
     // 当前天气
