@@ -5,8 +5,8 @@
 OpenMeteoInfo GetOpenMeteo(unsigned int AttemptCount) {
   Debug("天气:\n");
   String OpenMeteoHtml1 = "https://api.open-meteo.com/v1/forecast?latitude=";
-  String OpenMeteoHtml2 = "&longitude=";
-  String OpenMeteoHtml3 = "&current=temperature_2m,weather_code&timezone=Asia%2FSingapore&forecast_days=1";
+  const String OpenMeteoHtml2 = "&longitude=";
+  const String OpenMeteoHtml3 = "&current=temperature_2m,weather_code&timezone=Asia%2FSingapore&forecast_days=1";
   float Lxxitude;
   EEPROM.get(LatitudeAddr, Lxxitude);
   OpenMeteoHtml1 += String(Lxxitude) + OpenMeteoHtml2;
@@ -50,12 +50,11 @@ OpenMeteoInfo GetOpenMeteo(unsigned int AttemptCount) {
     Debug("Error: GetOpenMeteo() fail !\n");
   }
   http.end();
-
   return OInfo;
 }
 
 
-/*
+/*T
 0 晴天
 1~3 多云
 45~48 雾

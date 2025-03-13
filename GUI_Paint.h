@@ -242,8 +242,8 @@ unsigned int QR(const char *text, QR_Pos pos = PosCentre);
 
 // 3*5 数字 0~F
 const unsigned short ShuPixData[16] = {
-  0xF6CE,  // 0
-  0x4824,  // 1
+  0xF6DE,  // 0
+  0x4924,  // 1
   0xE7CE,  // 2
   0xE79E,  // 3
   0xB792,  // 4
@@ -253,7 +253,7 @@ const unsigned short ShuPixData[16] = {
   0xF7DE,  // 8
   0xF79E,  // 9
   0x57DA,  // A
-  0xD75A,  // B
+  0xD75C,  // B
   0xF24E,  // C
   0xD6DC,  // D
   0xF3CE,  // E

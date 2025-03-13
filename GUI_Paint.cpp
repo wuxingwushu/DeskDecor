@@ -83,6 +83,7 @@
 #include <string.h> //memset()
 #include <math.h>
 #include "FontFunction.h"
+#include "EPD_2in13_V4.h"
 PAINT Paint;
 
 /******************************************************************************
@@ -716,6 +717,10 @@ unsigned int CN_UTF8_Show(UWORD Xstart, UWORD Ystart, unsigned short filename)
         Font8bit = WordImgFile.read();
         for (int ij = 0; ij < 8; ++ij)
         {
+            if((y >= EPD_2in13_V4_HEIGHT) || ((x + myFont.Dy) >= EPD_2in13_V4_WIDTH)){
+                Serial.println("[Error]: 溢出屏幕！\n");
+                return myFont.x;
+            }
             if (Font8bit & 0x80)
             {
                 Paint_SetPixel_Gai(y, x + myFont.Dy, BLACK);
@@ -777,18 +782,24 @@ void CN_Show(UWORD Xstart, UWORD Ystart, const char *filename, unsigned int bian
         Serial.println("Failed to open FontData for writing\n");
         return;
     }
-    while (*p_text != 0)
+    while (*p_text != '\0')
     {
         FontIndex = from_bytes(p_text, myRange, WordInfoFileSize); // 计算下一个字的索引值
+        if(FontIndex == 0xFFFF){
+          ShowSexadecimalSystem(0, 0, from_bytes(p_text, myRange, WordInfoFileSize, false));
+          Deflection = 0;
+        }else{
+          // 显示字,获取字体宽度（用于偏移下一个字的位置）
+          Deflection = CN_UTF8_Show(PosY, PosX, FontIndex);
+        }
         p_text += fromDeviation;        // 移动到下一个字开头
-        // 显示字,获取字体宽度（用于偏移下一个字的位置）
-        Deflection = CN_UTF8_Show(PosY, PosX, FontIndex);
+        
         // 不同情况位移距离
         if (Deflection == 0)
         {
             Deflection = 10; // 空格
         }
-        else if (Deflection <= 5)
+        else if ((Deflection <= 5) && !(((*p_text >= 'a') && (*p_text <= 'z')) || ((*p_text >= 'A') && (*p_text <= 'Z'))))
         {
             Deflection += 4; // 符号
         }
@@ -845,6 +856,7 @@ void Num_Show(UWORD Xpoint, UWORD Ypoint, int32_t Nummber)
         Str_Bit++;
         Num_Bit--;
     }
+    Str_Array[Str_Bit] = '\0';
 
     // show
     CN_Show(Xpoint, Ypoint, (const char *)pStr);
@@ -866,7 +878,7 @@ void Img_Show(UWORD Xstart, UWORD Ystart, const unsigned char *img)
                 S = 0;
             }
             Paint_SetPixel_Gai(y, x, (Z & 0x80) ? WHITE : BLACK);
-            Z = Z << 1;
+            Z <<= 1;
         }
     }
 }
@@ -1005,17 +1017,18 @@ void RenovateScreen(UBYTE *Image)
 }
 
 void ShowSexadecimalSystem(UWORD Xpoint, UWORD Ypoint, unsigned int code){
-    unsigned char Index, Num = 4;
+    unsigned char Index, Num = 4;// 0x0000 4 个 十六位
     unsigned short img;
-    while (--Num) {
-        Index = code & 0xF;
-        code >>= 4;
+    while (Num--) {
+        Index = ((code & 0xF000) >> 12);
+        code <<= 4;// 4个bit
         img = ShuPixData[Index];
         for(unsigned char y = 0; y < 5; ++y) {
             for(unsigned char x = 0; x < 3; ++x) {
-                Paint_SetPixel_Gai(x + Xpoint, y + Ypoint, (img & (0x0001 << (x * y))) > 0 ? WHITE : BLACK);
+                Paint_SetPixel_Gai(x + Xpoint, y + Ypoint, ((img & 0x8000) > 0 ? BLACK : WHITE));
+                img <<= 1;
             }
         }
-        Xpoint += 4;
+        Xpoint += 4;// 位图 3 像素宽 + 1 像素 间隔
     }
 }

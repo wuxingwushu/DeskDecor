@@ -12,6 +12,7 @@
 - 天气信息的经纬度（地理位置）
 - 选择句子API（是否循环调用已选API）
 - WiFi账号密码（5个）
+- 可更换字体文件（替换原有字体bin文件）
 
 ## 硬件
 [epd2in13_V4](https://www.waveshare.net/wiki/2.13inch_e-Paper_Cloud_Module#.E5.8E.9F.E7.90.86.E5.9B.BE)

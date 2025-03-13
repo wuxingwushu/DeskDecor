@@ -16,25 +16,36 @@
 #include "FileSystem.h"
 // #include "WebDAV.h"
 
+// 开启多线程优化
+#define TaskDefine 0
+
 // 当前网络状态
 NetworkCase CaseInfo;
-
-// 添加全局变量
-TaskHandle_t OpenMeteoTaskHandle;
-// 天气信息
+#if TaskDefine
+TaskHandle_t OpenMeteoTaskHandle;// 任务索引
+extern OpenMeteoInfo infoM;// 天气信息
 OpenMeteoInfo infoM;
-bool TaskHandleBool = true;
+bool TaskHandleBool = true;// 信号量，任务是否完成
+char TQData[30] = "\0";// 储存天气字符串
 void GetOpenMeteoTask(void* ptr) {
   disableLoopWDT();  // 禁用Loop看门狗
-  infoM.Temperature = "";
-  infoM = GetOpenMeteo(10);
-  TaskHandleBool = false;
+  //infoM.Temperature = "";
+  //infoM = GetOpenMeteo(10);
+  *((OpenMeteoInfo*)ptr) = GetOpenMeteo(10);
+  int charsize = 0;
+  while(TQData[charsize] != '\0'){
+    TQData[charsize] = infoM.Temperature[charsize];
+    ++charsize;
+  }
+  TQData[charsize] = '\0';
   //UBaseType_t stack_remain = uxTaskGetStackHighWaterMark(OpenMeteoTaskHandle);
   //Debug("[DEBUG] Stack剩余：" + String(stack_remain * sizeof(StackType_t)) + "字节\n");
   enableLoopWDT();
   feedLoopWDT();                     // Arduino专用喂狗函数
+  TaskHandleBool = false;
   vTaskDelete(OpenMeteoTaskHandle);  // 删除当前任务
 }
+#endif
 
 void setup() {
   // 开始计算耗时
@@ -70,6 +81,11 @@ void setup() {
   writeStringToEEPROM(WifiNameAddr + (WiFiStrInterval * 4), "USER_128978");
   writeStringToEEPROM(WifiPassAddr + (WiFiStrInterval * 4), "70438480");
   ShowFileInfo();
+
+  ShowSexadecimalSystem(0, 0, 0x0123);
+  ShowSexadecimalSystem(16, 0, 0x4567);
+  ShowSexadecimalSystem(0, 6, 0x89AB);
+  ShowSexadecimalSystem(16, 6, 0xCDEF);
 #endif
 
   bool TimeUpDateBool = false;
@@ -78,27 +94,28 @@ void setup() {
   CaseInfo = ConnectWIFI();               // 连接wifi
   if (CaseInfo == Network_Wed)            // 开启Wed服务
   {
+    DEV_Delay_ms(10);
     String IPstr = WebServerFun();               // 开启服务
-    int SideSize = QR(IPstr.c_str(), PosRight);  // 显示服务 IP
+    int SideSize = EPD_2in13_V4_HEIGHT - QR(IPstr.c_str(), PosRight);  // 显示服务 IP
     // 显示在屏幕
-    CN_Show(40, 0, "连接热点", EPD_2in13_V4_HEIGHT - SideSize);
-    CN_Show(20, 24, "\"一言墨水屏\"", EPD_2in13_V4_HEIGHT - SideSize);
-    CN_Show(0, 48, "再扫码进入Wed服务端进行设置。", EPD_2in13_V4_HEIGHT - SideSize);
+    CN_Show(40, 0, "连接热点", SideSize);
+    CN_Show(20, 24, "\"一言墨水屏\"", SideSize);
+    CN_Show(0, 48, "再扫码进入Wed服务端进行设置。", SideSize);
     Debug("Network_Wed\n");
   } else if (CaseInfo == Network_Ok)  // wifi连接成功
   {
+#if TaskDefine
     // 创建独立任务执行格式化
-    /*
     xTaskCreatePinnedToCore(
       GetOpenMeteoTask,      // 任务函数
       "OpenMeteoTask",       // 任务名称
       8192 * 5,              // 堆栈大小
-      (void*)NULL,           // 参数传递
+      ((void*)&infoM),       // 参数传递
       2,                     // 优先级（高于loopTask）
       &OpenMeteoTaskHandle,  // 任务句柄
       1                      // 运行在Core1
-    );*/
-
+    );
+#endif
 
 
     // 获取 一言内容 和 显示
@@ -117,8 +134,8 @@ void setup() {
       CN_Show(0, 100, "开发者");
     }
 
+#if TaskDefine == 0
     // 天气信息
-    /**/
     OpenMeteoInfo infoM = GetOpenMeteo();
     if (infoM.Success) {
       String WeatherInfo = GetMeteoToString(infoM.Weather) + "," + infoM.Temperature;
@@ -127,7 +144,7 @@ void setup() {
     } else {
       CN_Show(0, 76, "天气罢工啦!");
     }
-    
+#endif
 
     // 获取时间
     TimeUpDateBool = RequestPresentTime();
@@ -166,16 +183,17 @@ void setup() {
   Debug("电量长度：" + String(Power) + "\n");
   for (int i = 0; i < Power; ++i)
     Paint_SetPixel_Gai(i, 121, BLACK);
-  /*
+#if TaskDefine
   while (TaskHandleBool) { DEV_Delay_ms(5); };
   feedLoopWDT();  // Arduino专用喂狗函数
   if (infoM.Success) {
     String WeatherInfo = GetMeteoToString(infoM.Weather) + "," + infoM.Temperature + "\0";
     Debug(WeatherInfo + "\n");
-    CN_Show(0, 76, WeatherInfo.c_str());
+    CN_Show(0, 76, TQData);
   } else {
     CN_Show(0, 76, "天气罢工啦!");
-  }*/
+  }
+#endif
   // 刷新屏幕显示内容
   for (int i = 0; i < 5; ++i) {
     RenovateScreen(BlackImage);

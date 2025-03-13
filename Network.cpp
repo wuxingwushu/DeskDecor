@@ -1260,14 +1260,21 @@ const char *WifiHtml = R"rawliteral(
     }
 
     .number-select {
+      flex-wrap: wrap;
+      justify-content: center;
+      /* 选项水平居中排列 */
+      gap: 8px;
+      /* 元素间距 */
       margin: 15px 0;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
     }
 
     .number-option {
-      flex: 1;
+      flex: 0 0 30%;
+      /* 基础宽度30%+不伸缩 */
+      min-width: 80px;
+      /* 最小宽度保护 */
       margin: 0 2px;
     }
 
@@ -1293,6 +1300,18 @@ const char *WifiHtml = R"rawliteral(
       border-color: #279f42;
     }
 
+    @media (max-width: 480px) {
+      .wifi-item {
+        padding: 3vh;
+        /* 减少纵向空间占用 */
+      }
+
+      .number-option {
+        flex: 0 0 45%;
+        /* 小屏幕显示2列 */
+      }
+    }
+
     /* 原有样式保持不变 */
     body,
     html {
@@ -1300,19 +1319,27 @@ const char *WifiHtml = R"rawliteral(
       margin: 0;
       font-family: 'SF Mono', 'Roboto Mono', monospace;
       display: flex;
-      justify-content: center;
-      align-items: center;
       background-color: #24292e;
       color: #c9d1d9;
+      justify-content: center;
+      /* 主轴上居中 */
+      align-items: center;
+      /* 交叉轴上居中 */
+      flex-direction: column;
+      /* 纵向排列元素 */
     }
 
     .wifi-container {
-      width: 100vh;
-      max-width: 50vh;
+      width: 90%;
+      /* 相对父容器宽度 */
+      max-width: 400px;
+      /* 桌面端最大宽度限制 */
+      min-width: 280px;
+      /* 移动端最小宽度保护 */
       background-color: #161b22;
       border-radius: 6px;
-      overflow: hidden;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      margin: 20px auto;
+      /* 上下留白+水平居中 */
     }
 
     .wifi-item {
@@ -1333,7 +1360,10 @@ const char *WifiHtml = R"rawliteral(
     }
 
     .form-input {
-      width: calc(100% - 20px);
+      width: 100%;
+      /* 继承父容器宽度 */
+      max-width: 300px;
+      /* 输入域最大宽度 */
       padding: 10px;
       margin: 10px 0;
       border: 1px solid #30363d;
@@ -1365,6 +1395,12 @@ const char *WifiHtml = R"rawliteral(
     }
 
     .form-container {
+      width: 90%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      /* 表单项水平居中 */
       padding: 20px;
       background-color: #161b22;
       border-radius: 6px;

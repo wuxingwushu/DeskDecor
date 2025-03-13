@@ -39,7 +39,6 @@ SentenceInfo GetSentence(){
   info = GetSentence(SentenceAPI(Passage), 10);
   info.StrSize = String(info.hitokoto).length();
   return info;
-
 }
 
 SentenceInfo GetSentence(SentenceAPI API, unsigned int AttemptCount){
