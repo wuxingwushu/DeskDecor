@@ -241,7 +241,7 @@ unsigned int QR(const char *text, QR_Pos pos = PosCentre);
 
 
 // 3*5 数字 0~F
-const unsigned short ShuPixData[16] = {
+const unsigned short ShuPixData[17] = {
   0xF6DE,  // 0
   0x4924,  // 1
   0xE7CE,  // 2
@@ -257,9 +257,11 @@ const unsigned short ShuPixData[16] = {
   0xF24E,  // C
   0xD6DC,  // D
   0xF3CE,  // E
-  0xF3C8   // F
+  0xF3C8,  // F
+  0x02AA   // x
 };
 
-void ShowSexadecimalSystem(UWORD Xpoint, UWORD Ypoint, unsigned int code);
+void ShowSexadecimalSystem0x(UWORD Xpoint, UWORD Ypoint);
+void ShowSexadecimalSystem(UWORD Xpoint, UWORD Ypoint, unsigned int code, unsigned char Num = 8);
 
 #endif

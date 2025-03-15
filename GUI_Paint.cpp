@@ -1016,11 +1016,33 @@ void RenovateScreen(UBYTE *Image)
     DEV_Digital_Write(EPD_CS_PIN, 1); // 关闭芯片
 }
 
-void ShowSexadecimalSystem(UWORD Xpoint, UWORD Ypoint, unsigned int code){
-    unsigned char Index, Num = 4;// 0x0000 4 个 十六位
+void ShowSexadecimalSystem0x(UWORD Xpoint, UWORD Ypoint){
+    unsigned short img = ShuPixData[0], img2 = ShuPixData[16];
+    for(unsigned char y = 0; y < 5; ++y) {
+        for(unsigned char x = 0; x < 3; ++x) {
+            Paint_SetPixel_Gai(x + Xpoint, y + Ypoint, ((img & 0x8000) > 0 ? BLACK : WHITE));
+            img <<= 1;
+            Paint_SetPixel_Gai(x + Xpoint + 4, y + Ypoint, ((img2 & 0x8000) > 0 ? BLACK : WHITE));
+            img2 <<= 1;
+        }
+    }
+}
+
+void ShowSexadecimalSystem(UWORD Xpoint, UWORD Ypoint, unsigned int code, unsigned char Num){
+    ShowSexadecimalSystem0x(Xpoint, Ypoint);// 显示 0x
+    Xpoint += 8;// 前面显示 0x 所以占用 8 像素宽度
+    unsigned char Index, MaskPos = ((Num - 1) * 4);// 0x0000 4 个 十六位
+    unsigned int Mask = 0x0000000F << MaskPos;
+    // 去除显示前面多余的 0
+    if(code != 0){
+        while((code & Mask) == 0) {
+            Mask>>=4;
+            Num--;
+        };
+    }
     unsigned short img;
     while (Num--) {
-        Index = ((code & 0xF000) >> 12);
+        Index = ((code & Mask) >> MaskPos);
         code <<= 4;// 4个bit
         img = ShuPixData[Index];
         for(unsigned char y = 0; y < 5; ++y) {
