@@ -32,7 +32,14 @@ void setup()
   // 初始化 屏幕
   EPD_2in13_V4_Init();
   // 初始化屏幕内容
-  UBYTE BlackImage[((EPD_2in13_V4_WIDTH % 8 == 0) ? (EPD_2in13_V4_WIDTH / 8) : (EPD_2in13_V4_WIDTH / 8 + 1)) * EPD_2in13_V4_HEIGHT]; // 显示缓冲
+  UBYTE *BlackImage; // 显示缓冲
+  const UWORD Imagesize = ((EPD_2in13_V4_WIDTH % 8 == 0) ? (EPD_2in13_V4_WIDTH / 8) : (EPD_2in13_V4_WIDTH / 8 + 1)) * EPD_2in13_V4_HEIGHT;
+  if ((BlackImage = (UBYTE *)malloc(Imagesize)) == NULL)
+  {
+    Debug("Failed to apply for black memory...\n");
+    while (1)
+      ;
+  }
   Paint_NewImage(BlackImage, EPD_2in13_V4_WIDTH, EPD_2in13_V4_HEIGHT, 90, WHITE);
   Paint_Clear(WHITE);
   // 初始化 ADC电压检测
