@@ -1040,6 +1040,7 @@ void ShowSexadecimalSystem(UWORD Xpoint, UWORD Ypoint, unsigned int code, unsign
             Num--;
         };
     }
+    MaskPos = ((Num - 1) * 4);
     unsigned short img;
     while (Num--) {
         Index = ((code & Mask) >> MaskPos);
