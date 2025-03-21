@@ -151,6 +151,7 @@ void setup()
 
   // 获取电压，显示电压
   int Power = ReadADC() * EPD_2in13_V4_HEIGHT;
+  ShowDecimalSystem(0, 8, Power);
   if (Power > EPD_2in13_V4_HEIGHT)
     Power = EPD_2in13_V4_HEIGHT;
   Debug("电量长度：" + String(Power) + "\n");

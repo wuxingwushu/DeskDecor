@@ -2,7 +2,7 @@
 
 WiFiUDP ntpUDP;
 NTPClient TimeNTPClient(ntpUDP, "ntp.aliyun.com", 60 * 60 * 8, 60 * 1000);
-unsigned char TimeH, TimeM, TimeS;
+unsigned char TimeD, TimeH, TimeM, TimeS;
 
 bool RequestPresentTime() {
   char TimeZone;
@@ -22,15 +22,17 @@ bool RequestPresentTime() {
 
 PresentTimeInfo GetDelayTime() {
   // 获取当前时间
+  TimeD = TimeNTPClient.getDay();   // 获取星期几
   TimeH = TimeNTPClient.getHours();    // 获取时
   TimeM = TimeNTPClient.getMinutes();  // 获取分
   TimeS = TimeNTPClient.getSeconds();   // 获取秒
 
-  return GetDelayTime(TimeH, TimeM);
+
+  return GetDelayTime(TimeD, TimeH, TimeM);
 }
 
 
-PresentTimeInfo GetDelayTime(unsigned char H, unsigned char M){
+PresentTimeInfo GetDelayTime(unsigned char D, unsigned char H, unsigned char M){
   PresentTimeInfo DelayTime;
   DelayTime.Success = false;
   DelayTime.PresentStr = "";

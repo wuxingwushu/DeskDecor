@@ -7,7 +7,7 @@
 #include "GUI_Paint.h"
 
 // 储存当前时间相关信息
-extern unsigned char TimeH, TimeM, TimeS;
+extern unsigned char TimeD, TimeH, TimeM, TimeS;
 
 // 当前时间信息
 typedef struct PresentTimeInfo {
@@ -21,6 +21,6 @@ bool RequestPresentTime();
 
 // 根据当前时间返回对应事件信息
 PresentTimeInfo GetDelayTime();
-PresentTimeInfo GetDelayTime(unsigned char H, unsigned char M);
+PresentTimeInfo GetDelayTime(unsigned char D, unsigned char H, unsigned char M);
 
 #endif

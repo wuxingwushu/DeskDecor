@@ -27,8 +27,10 @@
 
 #define TimeZoneAddr 24 // 时区偏移量（char）
 
+#define WorkDayAddr 25 // 星期几工作（unsigned char）
+
 #define WiFiStrInterval 200  // WIFI 数据间隔（WIFI 数据空间大小）
-#define WifiNameAddr 25   // WIFI 名字（char*）
+#define WifiNameAddr 26   // WIFI 名字（char*）
 #define WifiPassAddr (WifiNameAddr + (WiFiStrInterval / 2))  // WIFI 密码（char*）
 #define WifiDateMaxSize ((EepromBufferSize - WifiNameAddr) / WiFiStrInterval) // 可以储存 WIFI数据 数量
 

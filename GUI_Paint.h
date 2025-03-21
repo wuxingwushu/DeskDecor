@@ -264,4 +264,6 @@ const unsigned short ShuPixData[17] = {
 void ShowSexadecimalSystem0x(UWORD Xpoint, UWORD Ypoint);
 void ShowSexadecimalSystem(UWORD Xpoint, UWORD Ypoint, unsigned int code, unsigned char Num = 8);
 
+void ShowDecimalSystem(UWORD Xpoint, UWORD Ypoint, unsigned int code);
+
 #endif

@@ -1055,3 +1055,37 @@ void ShowSexadecimalSystem(UWORD Xpoint, UWORD Ypoint, unsigned int code, unsign
         Xpoint += 4;// 位图 3 像素宽 + 1 像素 间隔
     }
 }
+
+
+void ShowDecimalSystem(UWORD Xpoint, UWORD Ypoint, unsigned int code){
+  int16_t Num_Bit = 0, Str_Bit = 0;
+    uint8_t Num_Array[20] = {0};
+
+    if (Xpoint > Paint.Width || Ypoint > Paint.Height)
+    {
+        Debug("Paint_DisNum Input exceeds the normal display range\r\n");
+        return;
+    }
+
+    // Converts a number to a string
+    while (code)
+    {
+        Num_Array[Num_Bit] = code % 10;
+        Num_Bit++;
+        code /= 10;
+    }
+
+    unsigned short img;
+    while (Num_Bit--) {
+        img = ShuPixData[Num_Array[Num_Bit]];
+        for(unsigned char y = 0; y < 5; ++y) {
+            for(unsigned char x = 0; x < 3; ++x) {
+                Paint_SetPixel_Gai(x + Xpoint, y + Ypoint, ((img & 0x8000) > 0 ? BLACK : WHITE));
+                img <<= 1;
+            }
+        }
+        Xpoint += 4;// 位图 3 像素宽 + 1 像素 间隔
+    }
+}
+
+
