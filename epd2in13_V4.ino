@@ -101,18 +101,7 @@ void setup()
       CN_Show(0, 100, "开发者");
     }
 
-    // 天气信息
-    OpenMeteoInfo infoM = GetOpenMeteo();
-    if (infoM.Success)
-    {
-      String WeatherInfo = GetMeteoToString(infoM.Weather) + "," + infoM.Temperature;
-      Debug(String(WeatherInfo) + "\n");
-      CN_Show(0, 76, WeatherInfo.c_str());
-    }
-    else
-    {
-      CN_Show(0, 76, "天气罢工啦!");
-    }
+    
 
     // 获取时间
     TimeUpDateBool = RequestPresentTime();
@@ -123,7 +112,20 @@ void setup()
       if (InfoPT.Success)
       {
         DelayTime = InfoPT.PresentTime;
-        CN_Show(125, 76, InfoPT.PresentStr.c_str());
+        CN_Show(0, 76, InfoPT.PresentStr.c_str());
+      }
+    }else{
+      // 天气信息
+      OpenMeteoInfo infoM = GetOpenMeteo();
+      if (infoM.Success)
+      {
+        String WeatherInfo = GetMeteoToString(infoM.Weather) + "," + infoM.Temperature;
+        Debug(String(WeatherInfo) + "\n");
+        CN_Show(0, 76, WeatherInfo.c_str());
+      }
+      else
+      {
+        CN_Show(0, 76, "天气罢工啦!");
       }
     }
 
@@ -169,10 +171,11 @@ void setup()
   {
     if (!TimeUpDateBool)
     {
+      EEPROM.get(DayAddr, TimeD);
       EEPROM.get(PresentTimeHoursAddr, TimeH);
       EEPROM.get(PresentTimeMinutesAddr, TimeM);
       EEPROM.get(PresentTimeSecondAddr, TimeS);
-      PresentTimeInfo InfoPT = GetDelayTime(TimeH, TimeM);
+      PresentTimeInfo InfoPT = GetDelayTime(TimeD, TimeH, TimeM);
       if (InfoPT.Success)
       {
         DelayTime = InfoPT.PresentTime;
@@ -198,15 +201,20 @@ void setup()
       if (TimeH >= 24)
       {
         TimeH -= 24;
+        ++TimeD;
+        if(TimeD >= 7){
+          TimeD = 0;
+        }
       }
     }
     TimeM = TimeML;
+    EEPROM.put(DayAddr, TimeD);
     EEPROM.put(PresentTimeHoursAddr, TimeH);
     EEPROM.put(PresentTimeMinutesAddr, TimeM);
     EEPROM.put(PresentTimeSecondAddr, TimeS);
     EEPROM.commit();
     DEV_Delay_ms(10);
-    Debug("唤醒时间：" + String(TimeH) + ":" + String(TimeM) + ":" + String(TimeS) + "\n");
+    Debug("唤醒时间：" + GetTimeDayStr(1 << TimeD) + ", " + String(TimeH) + ":" + String(TimeM) + ":" + String(TimeS) + "\n");
 
     // 休眠
     Debug("休眠时间：" + String(DelayTime) + "分\n");

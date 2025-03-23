@@ -23,4 +23,6 @@ bool RequestPresentTime();
 PresentTimeInfo GetDelayTime();
 PresentTimeInfo GetDelayTime(unsigned char D, unsigned char H, unsigned char M);
 
+String GetTimeDayStr(unsigned char day);
+
 #endif

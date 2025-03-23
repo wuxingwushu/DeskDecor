@@ -219,7 +219,7 @@ void GetSetInfo(AsyncWebServerRequest *request) {
   Debug("获取设置信息\n");
   unsigned short shu;
   EEPROM.get(SleepValueAddr, shu);
-  unsigned char StartHours, StartMinutes, EndHours, EndMinutes, APIPassage;
+  unsigned char WorkDay_, StartHours, StartMinutes, EndHours, EndMinutes, APIPassage;
   EEPROM.get(StartTimeHoursAddr, StartHours);
   EEPROM.get(StartTimeMinutesAddr, StartMinutes);
   EEPROM.get(EndTimeHoursAddr, EndHours);
@@ -228,6 +228,7 @@ void GetSetInfo(AsyncWebServerRequest *request) {
   float LatitudeVal, LongitudeVal;
   EEPROM.get(LatitudeAddr, LatitudeVal);
   EEPROM.get(LongitudeAddr, LongitudeVal);
+  EEPROM.get(WorkDayAddr, WorkDay_);
 
   String json = "{";
   json += "\"TimeVal\":" + String(shu) + ",";
@@ -235,7 +236,8 @@ void GetSetInfo(AsyncWebServerRequest *request) {
   json += "\"EndTime\":\"" + TimeStandard(EndHours, EndMinutes) + "\",";
   json += "\"Latitude\":" + String(LatitudeVal) + ",";
   json += "\"Longitude\":" + String(LongitudeVal) + ",";
-  json += "\"BoolFlage\":" + String(APIPassage);
+  json += "\"BoolFlage\":" + String(APIPassage); + ",";
+  json += "\"WeekdayFlags\":" + String(WorkDay_);
   json += "}";
   Debug(json + "\n");
   request->send(200, "application/json", json);
@@ -281,6 +283,8 @@ void handleSetConfig(AsyncWebServerRequest *request) {
   Debug(LongitudeConfig + "\n");
   String BoolFlageConfig = request->arg("BoolFlage");
   Debug(BoolFlageConfig + "\n");
+  String WorkDayConfig = request->arg("WeekdayFlags");
+  Debug(WorkDayConfig + "\n");
 
   // 读取字符串
   Debug("储存为:\n");
@@ -318,6 +322,10 @@ void handleSetConfig(AsyncWebServerRequest *request) {
   Debug((int)HMData);
   Debug("\n");
   EEPROM.put(SentenceAPIPassageAddr, HMData);
+  HMData = WorkDayConfig.toInt();
+  Debug((int)HMData);
+  Debug("\n");
+  EEPROM.put(WorkDayAddr, HMData);
   EEPROM.put(WiFiIndexAddr, char(WifiDateMaxSize));
   EEPROM.commit();
 
@@ -1116,8 +1124,33 @@ const char *SetHtml = R"rawliteral(
         青桔
       </label>
     </div>
-
     <input type="hidden" id="BoolFlage" name="BoolFlage">
+
+    <p>工作日选择（多选）:</p>
+    <div class="switch-container" style="grid-template-columns: repeat(3, 1fr)">
+      <label class="switch-label">
+        <input type="checkbox" class="weekday-switch" data-bit="0">周日
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="weekday-switch" data-bit="1">周一
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="weekday-switch" data-bit="2">周二
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="weekday-switch" data-bit="3">周三
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="weekday-switch" data-bit="4">周四
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="weekday-switch" data-bit="5">周五
+      </label>
+      <label class="switch-label">
+        <input type="checkbox" class="weekday-switch" data-bit="6">周六
+      </label>
+    </div>
+    <input type="hidden" id="WeekdayFlags" name="WeekdayFlags">
 
     <button type="submit" class="submit-button">修改</button>
   </form>
@@ -1132,12 +1165,20 @@ const char *SetHtml = R"rawliteral(
           document.getElementById('Latitude').value = data.Latitude;
           document.getElementById('Longitude').value = data.Longitude;
           document.getElementById('BoolFlage').value = data.BoolFlage;
+          document.getElementById('WeekdayFlags').value = data.WeekdayFlags;
 
           // 更新复选框状态
           const flags = parseInt(data.BoolFlage, 10); // 确保转换为整数
           document.querySelectorAll('.bool-switch').forEach(checkbox => {
             const bit = parseInt(checkbox.dataset.bit); // 获取data-bit值
             checkbox.checked = (flags & (1 << bit)) !== 0; // 检查对应位是否设置
+          });
+
+          // 更新星期选择状态
+          const weekdayFlags = parseInt(data.WeekdayFlags, 10);
+          document.querySelectorAll('.weekday-switch').forEach(checkbox => {
+            const bit = parseInt(checkbox.dataset.bit);
+            checkbox.checked = (weekdayFlags & (1 << bit)) !== 0;
           });
         });
     }
@@ -1164,8 +1205,18 @@ const char *SetHtml = R"rawliteral(
           flags |= (1 << bit);
         }
       });
-
       document.getElementById('BoolFlage').value = flags;
+
+
+      // 生成星期标志位
+      let weekdayFlags = 0;
+      document.querySelectorAll('.weekday-switch').forEach(checkbox => {
+        if (checkbox.checked) {
+          const bit = parseInt(checkbox.dataset.bit);
+          weekdayFlags |= (1 << bit);
+        }
+      });
+      document.getElementById('WeekdayFlags').value = weekdayFlags;
     });
 
     // 实时交互逻辑
@@ -1208,7 +1259,7 @@ const char *SetHtml = R"rawliteral(
           },
           error => {
             let message = "无法获取位置信息：";
-            switch(error.code) {
+            switch (error.code) {
               case error.PERMISSION_DENIED:
                 message += "用户拒绝了位置请求";
                 break;
