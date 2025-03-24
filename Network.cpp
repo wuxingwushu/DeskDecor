@@ -236,7 +236,7 @@ void GetSetInfo(AsyncWebServerRequest *request) {
   json += "\"EndTime\":\"" + TimeStandard(EndHours, EndMinutes) + "\",";
   json += "\"Latitude\":" + String(LatitudeVal) + ",";
   json += "\"Longitude\":" + String(LongitudeVal) + ",";
-  json += "\"BoolFlage\":" + String(APIPassage); + ",";
+  json += "\"BoolFlage\":" + String(APIPassage) + ",";
   json += "\"WeekdayFlags\":" + String(WorkDay_);
   json += "}";
   Debug(json + "\n");
@@ -1129,25 +1129,32 @@ const char *SetHtml = R"rawliteral(
     <p>工作日选择（多选）:</p>
     <div class="switch-container" style="grid-template-columns: repeat(3, 1fr)">
       <label class="switch-label">
-        <input type="checkbox" class="weekday-switch" data-bit="0">周日
+        <input type="checkbox" class="weekday-switch" data-bit="0" checked>
+        周日
       </label>
       <label class="switch-label">
-        <input type="checkbox" class="weekday-switch" data-bit="1">周一
+        <input type="checkbox" class="weekday-switch" data-bit="1" checked>
+        周一
       </label>
       <label class="switch-label">
-        <input type="checkbox" class="weekday-switch" data-bit="2">周二
+        <input type="checkbox" class="weekday-switch" data-bit="2" checked>
+        周二
       </label>
       <label class="switch-label">
-        <input type="checkbox" class="weekday-switch" data-bit="3">周三
+        <input type="checkbox" class="weekday-switch" data-bit="3" checked>
+        周三
       </label>
       <label class="switch-label">
-        <input type="checkbox" class="weekday-switch" data-bit="4">周四
+        <input type="checkbox" class="weekday-switch" data-bit="4" checked>
+        周四
       </label>
       <label class="switch-label">
-        <input type="checkbox" class="weekday-switch" data-bit="5">周五
+        <input type="checkbox" class="weekday-switch" data-bit="5" checked>
+        周五
       </label>
       <label class="switch-label">
-        <input type="checkbox" class="weekday-switch" data-bit="6">周六
+        <input type="checkbox" class="weekday-switch" data-bit="6" checked>
+        周六
       </label>
     </div>
     <input type="hidden" id="WeekdayFlags" name="WeekdayFlags">

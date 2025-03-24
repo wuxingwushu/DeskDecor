@@ -98,10 +98,7 @@ PresentTimeInfo GetDelayTime(unsigned char D, unsigned char H, unsigned char M) 
     }
   } else if (DormantWork == 2) {  // 休眠时间不跨天情况
     DelayTime.PresentTime = StartTotal - TimeTotal;
-  }
-  --DelayTime.PresentTime;
-
-  
+  }  
 
   // 是否在休眠时间范围内
   if ((isWorkDay == 0) | DormantWork) {
@@ -115,7 +112,7 @@ PresentTimeInfo GetDelayTime(unsigned char D, unsigned char H, unsigned char M) 
     if (daysChecked >= 7) { daysChecked = 0; }
     DelayTime.PresentTime += 24 * 60 * daysChecked;
     --D;
-
+    /*
     String DormantTime = "休眠到" + GetTimeDayStr(0x01 << D) + "的 ";
     if (StartHours < 10) {
       DormantTime += "0" + String(StartHours);
@@ -129,6 +126,7 @@ PresentTimeInfo GetDelayTime(unsigned char D, unsigned char H, unsigned char M) 
       DormantTime += String(StartMinutes);
     }
     DelayTime.PresentStr = DormantTime;
+    */
   }
   return DelayTime;
 }

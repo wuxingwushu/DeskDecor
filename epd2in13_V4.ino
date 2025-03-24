@@ -66,6 +66,7 @@ void setup()
   DEV_Delay_ms(10);
 
   bool TimeUpDateBool = false;
+  PresentTimeInfo InfoPT;
   unsigned short DelayTime;              // 延迟时间（分）
   EEPROM.get(SleepValueAddr, DelayTime); // 獲取一言刷新間隔時間（分）
   CaseInfo = ConnectWIFI();              // 连接wifi
@@ -108,11 +109,10 @@ void setup()
     if (TimeUpDateBool)
     {
       ConsumeTime = millis();
-      PresentTimeInfo InfoPT = GetDelayTime(); // 时间信息
+      InfoPT = GetDelayTime(); // 时间信息
       if (InfoPT.Success)
       {
         DelayTime = InfoPT.PresentTime;
-        CN_Show(0, 76, InfoPT.PresentStr.c_str());
       }
     }else{
       // 天气信息
@@ -160,13 +160,6 @@ void setup()
   for (int i = 0; i < Power; ++i)
     Paint_SetPixel(i, 121, BLACK);
 
-  // 刷新屏幕显示内容
-  for (int i = 0; i < 5; ++i)
-  {
-    RenovateScreen(BlackImage);
-    DEV_Delay_ms(10);
-  }
-
   if (CaseInfo != Network_Wed)
   {
     if (!TimeUpDateBool)
@@ -175,11 +168,10 @@ void setup()
       EEPROM.get(PresentTimeHoursAddr, TimeH);
       EEPROM.get(PresentTimeMinutesAddr, TimeM);
       EEPROM.get(PresentTimeSecondAddr, TimeS);
-      PresentTimeInfo InfoPT = GetDelayTime(TimeD, TimeH, TimeM);
+      InfoPT = GetDelayTime(TimeD, TimeH, TimeM);
       if (InfoPT.Success)
       {
         DelayTime = InfoPT.PresentTime;
-        CN_Show(125, 76, InfoPT.PresentStr.c_str());
       }
     }
 
@@ -208,6 +200,20 @@ void setup()
       }
     }
     TimeM = TimeML;
+
+    String DormantTime = "休眠到" + GetTimeDayStr(0x01 << TimeD) + "的 ";
+    if (TimeH < 10) {
+      DormantTime += "0" + String(TimeH);
+    } else {
+      DormantTime += String(TimeH);
+    }
+    DormantTime += ":";
+    if (TimeM < 10) {
+      DormantTime += "0" + String(TimeM);
+    } else {
+      DormantTime += String(TimeM);
+    }
+
     EEPROM.put(DayAddr, TimeD);
     EEPROM.put(PresentTimeHoursAddr, TimeH);
     EEPROM.put(PresentTimeMinutesAddr, TimeM);
@@ -215,12 +221,25 @@ void setup()
     EEPROM.commit();
     DEV_Delay_ms(10);
     Debug("唤醒时间：" + GetTimeDayStr(1 << TimeD) + ", " + String(TimeH) + ":" + String(TimeM) + ":" + String(TimeS) + "\n");
+    if(InfoPT.Success){
+      CN_Show(0, 76, DormantTime.c_str());
+    }
+  }
 
+  // 刷新屏幕显示内容
+  for (int i = 0; i < 5; ++i)
+  {
+    RenovateScreen(BlackImage);
+    DEV_Delay_ms(10);
+  }
+
+  if (CaseInfo != Network_Wed)
+  {
     // 休眠
     Debug("休眠时间：" + String(DelayTime) + "分\n");
     unsigned long long int SleepTime = ((unsigned long long int)DelayTime) * 60 * 1000000;
     Debug(String(SleepTime) + "us\n");
-    Debug("总耗时:" + String(millis() - WorkConsumeTime) + "ms\n");
+    Serial.print("总耗时:" + String(millis() - WorkConsumeTime) + "ms\n");
     // 设置唤醒时间
     esp_sleep_enable_timer_wakeup(SleepTime);
     // 进入深度睡眠状态
