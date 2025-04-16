@@ -114,7 +114,8 @@ void setup()
       {
         DelayTime = InfoPT.PresentTime;
       }
-    }else{
+    }
+    if (!InfoPT.Success) {
       // 天气信息
       OpenMeteoInfo infoM = GetOpenMeteo();
       if (infoM.Success)
@@ -153,7 +154,7 @@ void setup()
 
   // 获取电压，显示电压
   int Power = ReadADC() * EPD_2in13_V4_HEIGHT;
-  ShowDecimalSystem(0, 8, Power);
+  ShowDecimalSystem(0, 6, Power);
   if (Power > EPD_2in13_V4_HEIGHT)
     Power = EPD_2in13_V4_HEIGHT;
   Debug("电量长度：" + String(Power) + "\n");
@@ -174,6 +175,8 @@ void setup()
         DelayTime = InfoPT.PresentTime;
       }
     }
+
+    ShowDecimalSystem(0, 12, TimeD);ShowDecimalSystem(5, 12, TimeH);ShowDecimalSystem(15, 12, TimeM);
 
     // 更新离线时间(计算下次唤醒的时间)
     ConsumeTime = millis() - ConsumeTime;

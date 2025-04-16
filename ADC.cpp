@@ -22,11 +22,11 @@ float ReadADC(){
   uint32_t adc_reading = 0;
   for (int i = 0; i < NO_OF_SAMPLES; i++) {
     adc_reading += adc1_get_raw((adc1_channel_t) ADC_PIN);
-    delay(5);
+    delay(10);
   }
 
   adc_reading /= NO_OF_SAMPLES;
-  uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
+  int voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
 
   Debug("ADC Reading: " + String(adc_reading) + "\tVoltage: " + String(voltage) + "\t" + String(float(voltage - MinVoltage) / VoltageRange) + "\n");
 
