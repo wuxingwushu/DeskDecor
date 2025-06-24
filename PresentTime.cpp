@@ -103,6 +103,11 @@ PresentTimeInfo GetDelayTime(unsigned char D, unsigned char H, unsigned char M) 
   // 是否在休眠时间范围内
   if ((isWorkDay == 0) | DormantWork) {
     DelayTime.Success = true;
+
+    if (isWorkDay && (DormantWork == 1) && (TimeTotal < StartTotal)) {
+      return DelayTime;
+    }
+
     int daysChecked = -1;
     do {
       ++daysChecked;

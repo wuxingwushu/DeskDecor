@@ -18,6 +18,18 @@
 
 // 当前网络状态
 NetworkCase CaseInfo;
+UBYTE *BlackImage; // 显示缓冲
+
+#define Bluetooth 0
+
+#if Bluetooth
+
+#include "BluetoothSerial.h"
+
+BluetoothSerial SerialBT;
+const char* deviceName = "ESP32-BT";  // 自定义蓝牙设备名称
+
+#endif
 
 void setup()
 {
@@ -32,7 +44,6 @@ void setup()
   // 初始化 屏幕
   EPD_2in13_V4_Init();
   // 初始化屏幕内容
-  UBYTE *BlackImage; // 显示缓冲
   const UWORD Imagesize = ((EPD_2in13_V4_WIDTH % 8 == 0) ? (EPD_2in13_V4_WIDTH / 8) : (EPD_2in13_V4_WIDTH / 8 + 1)) * EPD_2in13_V4_HEIGHT;
   if ((BlackImage = (UBYTE *)malloc(Imagesize)) == NULL)
   {
@@ -72,6 +83,15 @@ void setup()
   CaseInfo = ConnectWIFI();              // 连接wifi
   if (CaseInfo == Network_Wed)           // 开启Wed服务
   {
+#if Bluetooth
+
+    SerialBT.begin(deviceName);      // 启动蓝牙
+    Debug("蓝牙已启动，等待连接...\n");
+    Debug("设备名称：");
+    Debug(deviceName);
+    Debug("\n");
+
+#endif
     String IPstr = WebServerFun();              // 开启服务
     int SideSize = QR(IPstr.c_str(), PosRight); // 显示服务 IP
     // 显示在屏幕
@@ -250,4 +270,49 @@ void setup()
   }
 }
 
-void loop() {}
+bool HasClientVal;
+void loop() {
+
+#if Bluetooth
+  if (CaseInfo == Network_Wed){
+    // SerialBT.hasClient() 是否连接设备
+    if(HasClientVal != SerialBT.hasClient()){
+      HasClientVal = SerialBT.hasClient();
+
+      if(HasClientVal){
+        Serial.print("连接\n");
+      }else{
+        Serial.print("断开\n");
+      }
+    }
+
+    // SerialBT.available() 有多少数据可以读
+    // 蓝牙 → 串口转发
+    if (SerialBT.available()) {
+      String receivedData = SerialBT.readString();
+      Serial.print("[蓝牙接收] ");
+      Serial.println(receivedData);
+
+      Paint_Clear(WHITE);
+      CN_Show(34, 0, receivedData.c_str());
+      // 刷新屏幕显示内容
+      for (int i = 0; i < 5; ++i)
+      {
+        RenovateScreen(BlackImage);
+        DEV_Delay_ms(10);
+      }
+    }
+
+    // 串口 → 蓝牙转发
+    if (Serial.available()) {
+      String sendData = Serial.readStringUntil('\n');
+      SerialBT.println(sendData);
+      Serial.print("[蓝牙发送] ");
+      Serial.println(sendData);
+    }
+    
+    DEV_Delay_ms(20);
+  }
+#endif
+
+}
