@@ -91,7 +91,7 @@ PresentTimeInfo GetDelayTime(unsigned char D, unsigned char H, unsigned char M) 
   }
 
   if (DormantWork == 1) {  // 休眠时间跨天情况
-    if (TimeTotal > EndTotal) {
+    if (TimeTotal >= EndTotal) {
       DelayTime.PresentTime = (24 * 60) - TimeTotal + StartTotal;
     } else {
       DelayTime.PresentTime = StartTotal - TimeTotal;
